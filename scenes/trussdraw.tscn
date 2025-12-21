@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://vdy70fgf4vm2"]
+
+[ext_resource type="Script" uid="uid://buovy02btjhhx" path="res://scripts/trussdraw.gd" id="1_dwam6"]
+
+[node name="Node2D" type="Node2D"]
+script = ExtResource("1_dwam6")
