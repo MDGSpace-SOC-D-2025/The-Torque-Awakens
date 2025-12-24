@@ -18,6 +18,14 @@ func _input(event: InputEvent) -> void:
 				is_drawing = true
 			else:
 				end_point = best_pos(event.position)
+				if event.shift_pressed:
+					var diff_x = abs(end_point.x - start_point.x)
+					var diff_y = abs(end_point.y - start_point.y)
+					if diff_x > diff_y:
+						end_point.y = start_point.y
+					else:
+						end_point.x = start_point.x
+				end_point = best_pos(end_point)
 				if (end_point != start_point) and not_exists(start_point, end_point):
 					line_data.append([start_point, end_point])
 				is_drawing = false
@@ -62,7 +70,15 @@ func _draw() -> void:
 	for i in line_data:
 		draw_truss(i[0],i[1])
 	if is_drawing == true:
-		var mouse_pos = get_global_mouse_position()
+		var mouse_pos = get_viewport().get_mouse_position()
+		if Input.is_key_pressed(KEY_SHIFT):
+			if mouse_pos == best_pos(mouse_pos):
+				var diff_x = abs(mouse_pos.x - start_point.x)
+				var diff_y = abs(mouse_pos.y - start_point.y)
+				if diff_x > diff_y:
+					mouse_pos.y = start_point.y
+				else:
+					mouse_pos.x = start_point.x
 		draw_truss(start_point, mouse_pos)
 
 func _process(_delta: float) -> void:
