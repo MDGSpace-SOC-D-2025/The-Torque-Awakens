@@ -4,4 +4,4 @@
 
 [node name="Truss" type="Node2D"]
 script = ExtResource("1_dwam6")
-line_color = Color(0.4019501, 0.90399146, 0.9859763, 1)
+line_color = Color(0.4482789, 0.9063519, 1, 1)
