@@ -1,12 +1,23 @@
 extends Node2D
 
+class TrussMember extends RefCounted:
+	var start: Vector2
+	var end: Vector2
+	func _init(p1: Vector2, p2: Vector2):
+		start = p1
+		end = p2
+	func has_point(p: Vector2):
+		return (start == p) or (end == p)
+	func matches(p1: Vector2, p2: Vector2):
+		return (start == p1 and end == p2) or (start == p2 and end == p1)
+	
 var start_point: Vector2
 var end_point: Vector2
 var grabbed_point: Vector2
 var original_point: Vector2
 var is_drawing: = false
 var is_grabbing: = false
-var line_data = []
+var line_data: Array[TrussMember] = []
 @export var line_width: float = 20.0
 @export var line_thickness: float = 5.0
 @export var line_color: Color = Color.WHITE
@@ -25,17 +36,17 @@ func _input(event: InputEvent) -> void:
 					end_point = apply_shift_lock(start_point, end_point)
 					end_point = best_pos(end_point)
 				if (end_point != start_point) and not_exists(start_point, end_point):
-					line_data.append([start_point, end_point])
+					line_data.append(TrussMember.new(start_point, end_point))
 				is_drawing = false
 				is_grabbing = false
 				queue_redraw()
 				
 		if  event.button_index == MOUSE_BUTTON_RIGHT:
-			line_data = line_data.filter(func(line):
-				for point in line:
-					if best_pos(event.position)== point:
-						return false
-				return true
+			line_data = line_data.filter(func(member):
+				if member.has_point(best_pos(event.position)):
+					return false
+				else:
+					return true
 				)
 	if event is InputEventKey and event.pressed and event.keycode == KEY_G:
 		var mouse_pos = get_viewport().get_mouse_position()
@@ -49,7 +60,7 @@ func _input(event: InputEvent) -> void:
 			if event.button_index == MOUSE_BUTTON_LEFT:
 				update_grabbed_point(best_pos(get_viewport().get_mouse_position()))
 				line_data = line_data.filter(func(line):
-					return line[0] != line[1])
+					return line.start != line.end)
 				is_grabbing = false
 				is_drawing = false
 			if event.button_index == MOUSE_BUTTON_RIGHT:
@@ -59,6 +70,18 @@ func _input(event: InputEvent) -> void:
 	if is_drawing:
 		if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_RIGHT:
 			is_drawing = false
+	if is_grabbing and event is InputEventMouseMotion:
+		var raw_mouse = event.position
+		var snap_pos = raw_mouse
+		for member in line_data:
+			if member.start != grabbed_point and raw_mouse.distance_to(member.start) < snap_radius:
+				snap_pos = member.start
+				break
+			if member.end != grabbed_point and raw_mouse.distance_to(member.end) < snap_radius:
+				snap_pos = member.end
+				break
+		update_grabbed_point(snap_pos)
+		queue_redraw()
 
 func draw_truss(p1: Vector2, p2: Vector2):
 	var total_width = line_thickness + line_width
@@ -82,30 +105,30 @@ func apply_shift_lock(origin: Vector2, target: Vector2) -> Vector2:
 		return Vector2(origin.x, target.y)
 
 func best_pos(p: Vector2) -> Vector2:
-	var closest_point = p
-	for line in line_data:
-		for point in line:
-			if p.distance_to(point) < snap_radius:
-				closest_point = point
-	return closest_point
+	for member in line_data:
+		if p.distance_to(member.start) < snap_radius:
+			return member.start
+		if p.distance_to(member.end) < snap_radius:
+			return member.end
+	return p
 
 func not_exists(p1: Vector2, p2: Vector2):
-	for line in line_data:
-		if (line[0] == p1 and line[1] == p2) or (line[1] == p1 and line[0] == p2):
+	for member in line_data:
+		if member.matches(p1  ,p2):
 			return false
 	return true
 	
 func update_grabbed_point(new_pos: Vector2):
-	for line in  line_data:
-		if line[0] == grabbed_point:
-			line[0] = new_pos
-		if line[1] == grabbed_point:
-			line[1] = new_pos
+	for member in  line_data:
+		if member.start == grabbed_point:
+			member.start = new_pos
+		if member.end == grabbed_point:
+			member.end = new_pos
 	grabbed_point = new_pos
 
 func _draw() -> void:
-	for i in line_data:
-		draw_truss(i[0],i[1])
+	for member in line_data:
+		draw_truss(member.start,member.end)
 	if is_drawing:
 		var mouse_pos = best_pos(get_viewport().get_mouse_position())
 		if Input.is_key_pressed(KEY_SHIFT):
@@ -113,13 +136,4 @@ func _draw() -> void:
 		draw_truss(start_point, mouse_pos)
 
 func _process(_delta: float) -> void:
-	if is_grabbing:
-		var raw_mouse = get_viewport().get_mouse_position()
-		var snap_pos = raw_mouse
-		for line in line_data:
-			for point in line:
-				if point != grabbed_point: 
-					if raw_mouse.distance_to(point) < snap_radius:
-						snap_pos = point
-		update_grabbed_point(snap_pos)
 	queue_redraw()
