@@ -26,8 +26,21 @@ var line_data: Array[TrussMember] = []
 
 func _input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.pressed:
+		if is_grabbing:
+			if event.button_index == MOUSE_BUTTON_LEFT:
+				update_grabbed_point(best_pos(event.position))
+				line_data = line_data.filter(func(line): return line.start != line.end)
+				is_grabbing = false
+				get_viewport().set_input_as_handled()
+				return
+			elif event.button_index == MOUSE_BUTTON_RIGHT:
+				update_grabbed_point(original_point)
+				is_grabbing = false
+				get_viewport().set_input_as_handled()
+				return
+
 		if event.button_index == MOUSE_BUTTON_LEFT:
-			if (is_drawing == false):
+			if not is_drawing:
 				start_point = best_pos(event.position)
 				is_drawing = true
 			else:
@@ -35,41 +48,30 @@ func _input(event: InputEvent) -> void:
 				if event.shift_pressed:
 					end_point = apply_shift_lock(start_point, end_point)
 					end_point = best_pos(end_point)
+				
 				if (end_point != start_point) and not_exists(start_point, end_point):
 					line_data.append(TrussMember.new(start_point, end_point))
 				is_drawing = false
-				is_grabbing = false
 				queue_redraw()
 				
-		if  event.button_index == MOUSE_BUTTON_RIGHT:
-			line_data = line_data.filter(func(member):
-				if member.has_point(best_pos(event.position)):
-					return false
-				else:
-					return true
+		elif event.button_index == MOUSE_BUTTON_RIGHT:
+			if is_drawing:
+				is_drawing = false
+			else:
+				line_data = line_data.filter(func(member):
+					return !member.has_point(best_pos(event.position))
 				)
+			queue_redraw()
+
 	if event is InputEventKey and event.pressed and event.keycode == KEY_G:
 		var mouse_pos = get_viewport().get_mouse_position()
-		if mouse_pos.distance_to(best_pos(mouse_pos)) < snap_radius:
+		var snapped_pos = best_pos(mouse_pos)
+		if mouse_pos.distance_to(snapped_pos) < snap_radius:
 			is_drawing = false
 			is_grabbing = true
-			grabbed_point = best_pos(mouse_pos)
-			original_point = best_pos(mouse_pos)
-	if is_grabbing:
-		if event is InputEventMouseButton and event.pressed:
-			if event.button_index == MOUSE_BUTTON_LEFT:
-				update_grabbed_point(best_pos(get_viewport().get_mouse_position()))
-				line_data = line_data.filter(func(line):
-					return line.start != line.end)
-				is_grabbing = false
-				is_drawing = false
-			if event.button_index == MOUSE_BUTTON_RIGHT:
-				update_grabbed_point(best_pos(original_point))
-				is_drawing = false
-				is_grabbing = false
-	if is_drawing:
-		if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_RIGHT:
-			is_drawing = false
+			grabbed_point = snapped_pos
+			original_point = snapped_pos
+
 	if is_grabbing and event is InputEventMouseMotion:
 		var raw_mouse = event.position
 		var snap_pos = raw_mouse
@@ -118,6 +120,52 @@ func not_exists(p1: Vector2, p2: Vector2):
 			return false
 	return true
 	
+func solve_system(A: Array, B: Array):
+	var n = A.size()
+	var M = []
+	
+	for i in A:
+		if i.size() != n:
+			print("Not Square!")
+			return null
+	
+	if n != B.size():
+		print("Size Mismatch")
+		return null
+	
+	for i in range(n):
+		var row = A[i].duplicate()
+		row.append(B[i])
+		M.append(row)
+
+	for i in range(n):
+		var max_row = i
+		for k in range(i + 1, n):
+			if abs(M[k][i]) > abs(M[max_row][i]):
+				max_row = k
+		
+		var temp = M[i]
+		M[i] = M[max_row]
+		M[max_row] = temp
+
+		if abs(M[i][i]) < 1e-10:
+			return null
+
+		for k in range(i + 1, n):
+			var factor = M[k][i] / M[i][i]
+			for j in range(i, n + 1):
+				M[k][j] -= factor * M[i][j]
+
+	var x = []
+	x.resize(n)
+	for i in range(n - 1, -1, -1):
+		var sum = 0.0
+		for j in range(i + 1, n):
+			sum += M[i][j] * x[j]
+		x[i] = (M[i][n] - sum) / M[i][i]
+	
+	return x
+
 func update_grabbed_point(new_pos: Vector2):
 	for member in  line_data:
 		if member.start == grabbed_point:
