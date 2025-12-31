@@ -46,7 +46,7 @@ func _input(event: InputEvent) -> void:
 		if event.keycode == KEY_F:
 			current_mode = Mode.ADD_FORCES
 		if event.keycode == KEY_ENTER:
-			pass
+			solve_truss()
 			
 	match current_mode:
 		Mode.DRAW_MEMBERS:
@@ -56,18 +56,21 @@ func _input(event: InputEvent) -> void:
 		Mode.ADD_FORCES:
 			handle_force_logic(event)
 		Mode.SOLVED:
-			pass
+			if event is InputEventMouseButton and event.pressed:
+				current_mode = Mode.DRAW_MEMBERS
+				member_forces.clear()
+				queue_redraw()
 
-func draw_truss(p1: Vector2, p2: Vector2):
+func draw_truss(p1: Vector2, p2: Vector2, truss_color: Color):
 	var total_width = line_thickness + line_width
 	var border_radius = total_width/2
 	var truss_radius = line_width/2
 	draw_line(p1, p2, border_color,total_width)
 	draw_circle(p1,border_radius, border_color)
 	draw_circle(p2,border_radius, border_color)
-	draw_line(p1, p2, line_color,line_width)
-	draw_circle(p1,truss_radius, line_color)
-	draw_circle(p2,truss_radius, line_color)
+	draw_line(p1, p2, truss_color,line_width)
+	draw_circle(p1,truss_radius, truss_color)
+	draw_circle(p2,truss_radius, truss_color)
 	draw_circle(p1,4, border_color)
 	draw_circle(p2,4, border_color)
 	
@@ -121,7 +124,16 @@ func get_unique_nodes():
 
 func _draw() -> void:
 	for member in line_data:
-		draw_truss(member.start,member.end)
+		var m_color = line_color
+		if current_mode == Mode.SOLVED and member_forces.has(member):
+			var force =member_forces[member]
+			if force > 0.1:
+				m_color = Color.CYAN
+			elif force < 0.1:
+				m_color = Color.TOMATO
+			else:
+				m_color = Color.DARK_GRAY
+		draw_truss(member.start,member.end, m_color)
 		
 	for node in node_loads:
 		var vec = node_loads[node]
@@ -131,7 +143,7 @@ func _draw() -> void:
 		var mouse_pos = best_pos(get_viewport().get_mouse_position())
 		if Input.is_key_pressed(KEY_SHIFT):
 			mouse_pos = apply_shift_lock(start_point, mouse_pos)
-		draw_truss(start_point, mouse_pos)
+		draw_truss(start_point, mouse_pos, Color.GRAY)
 		
 	if is_drawing_forces:
 		var preview_mouse = best_pos(get_viewport().get_mouse_position())
@@ -245,6 +257,72 @@ func handle_force_logic(event):
 				node_loads.erase(snapped_node)
 	queue_redraw()
 	
+	
+func solve_truss():
+	var nodes = get_unique_nodes()
+	var num_nodes = nodes.size()
+	var member_count = line_data.size()
+	var system_size = num_nodes*2
+	var A = []
+	for i in range(system_size):
+		var row = []
+		row.resize(system_size)
+		row.fill(0.0)
+		A.append(row)
+	var B = []
+	B.resize(system_size)
+	B.fill(0.0)
+	for m_idx in range(member_count):
+		var member = line_data[m_idx]
+		var diff = member.end - member.start
+		var length = diff.length()
+		var unit = diff/length
+		var n1_dx = nodes.find(member.start)
+		var n2_dx = nodes.find(member.end)
+		
+		A[n1_dx *2][m_idx] = unit.x
+		A[n1_dx *2 +1][m_idx] = unit.y
+		
+		A[n2_dx *2][m_idx] = -unit.x
+		A[n2_dx*2 + 1][m_idx] = -unit.y
+		
+	var reaction_col = member_count
+	for node_pos in node_supports:
+		var n_idx = nodes.find(node_pos)
+		var type = node_supports[node_pos]
+		match type:
+			SupportType.PIN_X, SupportType.PIN_X_NEG, SupportType.PIN_Y, SupportType.PIN_Y_NEG:
+				if reaction_col < system_size:
+					A[n_idx*2][reaction_col] = 1.0
+					reaction_col += 1
+				if reaction_col < system_size:
+					A[n_idx*2 + 1][reaction_col] = 1.0
+					reaction_col += 1
+			SupportType.ROLLER_X, SupportType.ROLLER_X_NEG:
+				if reaction_col < system_size:
+					A[n_idx*2 + 1][reaction_col] = 1.0
+					reaction_col +=1
+			SupportType.ROLLER_Y, SupportType.ROLLER_Y_NEG:
+				if reaction_col < system_size:
+					A[n_idx*2][reaction_col] = 1.0
+					reaction_col +=1
+	for node_pos in node_loads:
+		var n_idx = nodes.find(node_pos)
+		if n_idx != -1:
+			var force = node_loads[node_pos]
+			B[n_idx*2 +1] = -force.x
+			B[n_idx*2] = -force.y
+	var results = solve_system(A,B)
+	if results:
+		member_forces.clear()
+		for i in range(member_count):
+			member_forces[line_data[i]] = results[i]
+			current_mode = Mode.SOLVED
+			print("Truss System is solved!")
+	else:
+		print("Some Error Occured")
+	queue_redraw()
+
 func draw_support_icon(pos: Vector2, type: SupportType):
 	var size = 15.0
 	var color = Color.GREEN
