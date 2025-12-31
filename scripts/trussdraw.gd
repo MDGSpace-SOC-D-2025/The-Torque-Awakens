@@ -14,7 +14,7 @@ class TrussMember extends RefCounted:
 enum Mode { DRAW_MEMBERS, ADD_SUPPORTS, ADD_FORCES, SOLVED}
 var current_mode: = Mode.DRAW_MEMBERS
 
-enum SupportType {NONE, PIN, ROLLER_X, ROLLER_Y}
+enum SupportType {NONE, PIN_X, PIN_X_NEG, PIN_Y, PIN_Y_NEG, ROLLER_X, ROLLER_X_NEG, ROLLER_Y, ROLLER_Y_NEG}
 var node_supports = {}
 var node_loads = {}
 var member_forces = {}
@@ -52,9 +52,9 @@ func _input(event: InputEvent) -> void:
 		Mode.DRAW_MEMBERS:
 			handle_member_drawing(event)
 		Mode.ADD_SUPPORTS:
-			pass
+			handle_support_logic(event)
 		Mode.ADD_FORCES:
-			pass
+			handle_force_logic(event)
 		Mode.SOLVED:
 			pass
 
@@ -122,12 +122,31 @@ func get_unique_nodes():
 func _draw() -> void:
 	for member in line_data:
 		draw_truss(member.start,member.end)
+		
+	for node in node_loads:
+		var vec = node_loads[node]
+		draw_force(node - vec, node, Color.RED)
+		
 	if is_drawing:
 		var mouse_pos = best_pos(get_viewport().get_mouse_position())
 		if Input.is_key_pressed(KEY_SHIFT):
 			mouse_pos = apply_shift_lock(start_point, mouse_pos)
 		draw_truss(start_point, mouse_pos)
 		
+	if is_drawing_forces:
+		var preview_mouse = best_pos(get_viewport().get_mouse_position())
+		if Input.is_key_pressed(KEY_SHIFT):
+			preview_mouse = apply_shift_lock(force_start_nodes, preview_mouse)
+			preview_mouse = best_pos(preview_mouse)
+		if Input.is_key_pressed(KEY_ALT):
+			draw_force(preview_mouse, force_start_nodes, Color.ORANGE)
+		else:
+			draw_force(force_start_nodes, preview_mouse, Color.ORANGE)
+	
+	for node_pos in node_supports:
+		var type = node_supports[node_pos]
+		draw_support_icon(node_pos, type)
+
 func handle_member_drawing(event):
 	if event is InputEventMouseButton and event.pressed:
 		if is_grabbing:
@@ -188,6 +207,80 @@ func handle_member_drawing(event):
 				break
 		update_grabbed_point(snap_pos)
 		queue_redraw()
+
+func handle_support_logic(event):
+	if event is InputEventMouseButton and event.pressed:
+		var pos = best_pos(event.position)
+		if event.position.distance_to(pos) < snap_radius:
+			if event.button_index == MOUSE_BUTTON_LEFT:
+				var current = node_supports.get(pos, SupportType.NONE)
+				node_supports[pos] = (current + 1) % 9
+			elif event.button_index == MOUSE_BUTTON_RIGHT:
+				node_supports.erase(pos)
+		queue_redraw()
+		
+func handle_force_logic(event):
+	if event is InputEventMouseButton:
+		var snapped_node = best_pos(event.position)
+		if event.button_index == MOUSE_BUTTON_LEFT:
+			if event.pressed:
+				force_start_nodes = snapped_node
+				is_drawing_forces = true
+			else:
+				if is_drawing_forces:
+					var target_pos = best_pos(event.position)
+					if Input.is_key_pressed(KEY_SHIFT):
+						target_pos = apply_shift_lock(force_start_nodes, target_pos)
+						target_pos = best_pos(target_pos)
+					var force_vec: Vector2
+					if Input.is_key_pressed(KEY_ALT):
+						force_vec = force_start_nodes - target_pos
+					else:
+						force_vec = target_pos - force_start_nodes
+					if force_vec.length() > 5:
+						node_loads[force_start_nodes] = force_vec
+					is_drawing_forces = false
+		elif event.button_index == MOUSE_BUTTON_RIGHT and event.pressed:
+			if event.position.distance_to(snapped_node) < snap_radius:
+				node_loads.erase(snapped_node)
+	queue_redraw()
+	
+func draw_support_icon(pos: Vector2, type: SupportType):
+	var size = 15.0
+	var color = Color.GREEN
+	match type:
+		SupportType.PIN_X:
+			draw_support_triangle(pos, Vector2(0, size*1.5),color)
+		SupportType.PIN_X_NEG:
+			draw_support_triangle(pos,Vector2(0,-size*1.5), color)
+		SupportType.PIN_Y:
+			draw_support_triangle(pos, Vector2(size*1.5,0), color)
+		SupportType.PIN_Y_NEG:
+			draw_support_triangle(pos, Vector2(-size*1.5,0), color)
+		SupportType.ROLLER_X:
+			draw_support_triangle(pos, Vector2(0,size), color)
+			draw_circle(pos + Vector2(-size/2 ,size +5),4, color)
+			draw_circle(pos + Vector2(size/2 ,size +5),4, color)
+		SupportType.ROLLER_X_NEG:
+			draw_support_triangle(pos, Vector2(0,-size), color)
+			draw_circle(pos + Vector2(-size/2 ,-size -5),4, color)
+			draw_circle(pos + Vector2(size/2 ,-size -5),4, color)
+		SupportType.ROLLER_Y:
+			draw_support_triangle(pos, Vector2(size,0), color)
+			draw_circle(pos + Vector2(size +5, -size/2),4, color)
+			draw_circle(pos + Vector2(size +5, size/2),4, color)
+		SupportType.ROLLER_Y_NEG:
+			draw_support_triangle(pos, Vector2(-size,0), color)
+			draw_circle(pos + Vector2(-size -5, -size/2),4, color)
+			draw_circle(pos + Vector2(-size -5, size/2),4, color)
+			
+
+func draw_support_triangle(center: Vector2, offset: Vector2, color: Color):
+	var side = offset.rotated(PI/2).normalized() * 15.0
+	var p1 = center
+	var p2 = center + offset - side
+	var p3 = center + offset + side
+	draw_colored_polygon([p1,p2,p3], color)
 
 func _process(_delta: float) -> void:
 	queue_redraw()
