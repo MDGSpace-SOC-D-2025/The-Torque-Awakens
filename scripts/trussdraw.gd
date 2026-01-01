@@ -47,7 +47,6 @@ func _input(event: InputEvent) -> void:
 			current_mode = Mode.ADD_FORCES
 		if event.keycode == KEY_ENTER:
 			solve_truss()
-			
 	match current_mode:
 		Mode.DRAW_MEMBERS:
 			handle_member_drawing(event)
@@ -73,7 +72,7 @@ func draw_truss(p1: Vector2, p2: Vector2, truss_color: Color):
 	draw_circle(p2,truss_radius, truss_color)
 	draw_circle(p1,4, border_color)
 	draw_circle(p2,4, border_color)
-	
+
 func draw_force(from: Vector2, to: Vector2, force_color: Color):
 	if from.distance_to(to) < 5:
 		return
@@ -81,7 +80,7 @@ func draw_force(from: Vector2, to: Vector2, force_color: Color):
 	var dir = (to-from).normalized()
 	var side = dir.rotated(PI/2)*10
 	draw_primitive([to, to -dir*15 + side, to -dir*15-side],[force_color],[])
-	
+
 func apply_shift_lock(origin: Vector2, target: Vector2) -> Vector2:
 	var diff_x = abs(target.x - origin.x)
 	var diff_y = abs(target.y - origin.y)
@@ -103,7 +102,6 @@ func not_exists(p1: Vector2, p2: Vector2):
 		if member.matches(p1  ,p2):
 			return false
 	return true
-	
 
 func update_grabbed_point(new_pos: Vector2):
 	for member in  line_data:
@@ -112,7 +110,7 @@ func update_grabbed_point(new_pos: Vector2):
 		if member.end == grabbed_point:
 			member.end = new_pos
 	grabbed_point = new_pos
-	
+
 func get_unique_nodes():
 	var points = []
 	for m in line_data:
@@ -134,17 +132,17 @@ func _draw() -> void:
 			else:
 				m_color = Color.DARK_GRAY
 		draw_truss(member.start,member.end, m_color)
-		
+
 	for node in node_loads:
 		var vec = node_loads[node]
 		draw_force(node - vec, node, Color.RED)
-		
+
 	if is_drawing:
 		var mouse_pos = best_pos(get_viewport().get_mouse_position())
 		if Input.is_key_pressed(KEY_SHIFT):
 			mouse_pos = apply_shift_lock(start_point, mouse_pos)
 		draw_truss(start_point, mouse_pos, Color.GRAY)
-		
+
 	if is_drawing_forces:
 		var preview_mouse = best_pos(get_viewport().get_mouse_position())
 		if Input.is_key_pressed(KEY_SHIFT):
@@ -154,7 +152,7 @@ func _draw() -> void:
 			draw_force(preview_mouse, force_start_nodes, Color.ORANGE)
 		else:
 			draw_force(force_start_nodes, preview_mouse, Color.ORANGE)
-	
+
 	for node_pos in node_supports:
 		var type = node_supports[node_pos]
 		draw_support_icon(node_pos, type)
@@ -230,7 +228,7 @@ func handle_support_logic(event):
 			elif event.button_index == MOUSE_BUTTON_RIGHT:
 				node_supports.erase(pos)
 		queue_redraw()
-		
+
 func handle_force_logic(event):
 	if event is InputEventMouseButton:
 		var snapped_node = best_pos(event.position)
@@ -263,12 +261,14 @@ func solve_truss():
 	var num_nodes = nodes.size()
 	var member_count = line_data.size()
 	var system_size = num_nodes*2
+	
 	var A = []
 	for i in range(system_size):
 		var row = []
 		row.resize(system_size)
 		row.fill(0.0)
 		A.append(row)
+	
 	var B = []
 	B.resize(system_size)
 	B.fill(0.0)
@@ -285,7 +285,7 @@ func solve_truss():
 		
 		A[n2_dx *2][m_idx] = -unit.x
 		A[n2_dx*2 + 1][m_idx] = -unit.y
-		
+	
 	var reaction_col = member_count
 	for node_pos in node_supports:
 		var n_idx = nodes.find(node_pos)
@@ -310,8 +310,8 @@ func solve_truss():
 		var n_idx = nodes.find(node_pos)
 		if n_idx != -1:
 			var force = node_loads[node_pos]
-			B[n_idx*2 +1] = -force.x
-			B[n_idx*2] = -force.y
+			B[n_idx*2 +1] = -force.y
+			B[n_idx*2] = -force.x
 	var results = solve_system(A,B)
 	if results:
 		member_forces.clear()
@@ -351,7 +351,6 @@ func draw_support_icon(pos: Vector2, type: SupportType):
 			draw_support_triangle(pos, Vector2(-size,0), color)
 			draw_circle(pos + Vector2(-size -5, -size/2),4, color)
 			draw_circle(pos + Vector2(-size -5, size/2),4, color)
-			
 
 func draw_support_triangle(center: Vector2, offset: Vector2, color: Color):
 	var side = offset.rotated(PI/2).normalized() * 15.0
@@ -362,7 +361,7 @@ func draw_support_triangle(center: Vector2, offset: Vector2, color: Color):
 
 func _process(_delta: float) -> void:
 	queue_redraw()
-	
+
 func solve_system(A: Array, B: Array):
 	var n = A.size()
 	var M = []
@@ -380,25 +379,22 @@ func solve_system(A: Array, B: Array):
 		var row = A[i].duplicate()
 		row.append(B[i])
 		M.append(row)
-
+	
 	for i in range(n):
 		var max_row = i
 		for k in range(i + 1, n):
 			if abs(M[k][i]) > abs(M[max_row][i]):
 				max_row = k
-		
 		var temp = M[i]
 		M[i] = M[max_row]
 		M[max_row] = temp
-
 		if abs(M[i][i]) < 1e-10:
 			return null
-
 		for k in range(i + 1, n):
 			var factor = float(M[k][i]) / float(M[i][i])
 			for j in range(i, n + 1):
 				M[k][j] -= factor * M[i][j]
-
+	
 	var x = []
 	x.resize(n)
 	for i in range(n - 1, -1, -1):
@@ -406,5 +402,4 @@ func solve_system(A: Array, B: Array):
 		for j in range(i + 1, n):
 			sum += M[i][j] * x[j]
 		x[i] = (M[i][n] - sum) / M[i][i]
-	
 	return x
