@@ -76,9 +76,14 @@ func draw_truss(p1: Vector2, p2: Vector2, truss_color: Color):
 func draw_force(from: Vector2, to: Vector2, force_color: Color):
 	if from.distance_to(to) < 5:
 		return
-	draw_line(from,to,Color.RED,3.0)
 	var dir = (to-from).normalized()
 	var side = dir.rotated(PI/2)*10
+	var b_side = dir.rotated(PI/2)*15
+	draw_line(from,to,border_color,3.0+line_thickness)
+	draw_circle(from,(3.0+line_thickness)/2,border_color,true)
+	draw_primitive([to, to -dir*15 + b_side, to -dir*15-b_side],[border_color],[])
+	draw_line(from,to,force_color,3.0)
+	draw_circle(from,3.0/2,force_color,true)
 	draw_primitive([to, to -dir*15 + side, to -dir*15-side],[force_color],[])
 
 func apply_shift_lock(origin: Vector2, target: Vector2) -> Vector2:
@@ -314,11 +319,40 @@ func solve_truss():
 			B[n_idx*2] = -force.x
 	var results = solve_system(A,B)
 	if results:
+		print("Truss System is solved!")
 		member_forces.clear()
+		
+		print("Forces in Trusses")
 		for i in range(member_count):
-			member_forces[line_data[i]] = results[i]
-			current_mode = Mode.SOLVED
-			print("Truss System is solved!")
+			var force_val = results[i]
+			member_forces[line_data[i]] = force_val
+			var type_label: String
+			if force_val > 0.01:
+				type_label = "T"
+			else:
+				type_label = "C"
+			if abs(force_val) < 0.01:
+				type_label = "Zero"
+			print("  Member %d: %0.2f [%s]" % [i, force_val, type_label])
+		print("Reaction Forces")
+		var reaction_idx = member_count
+		for node_pos in node_supports:
+			var type = node_supports[node_pos]
+			match type:
+				SupportType.PIN_X, SupportType.PIN_X_NEG,SupportType.PIN_Y, SupportType.PIN_Y_NEG:
+					var rx = results[reaction_idx]
+					var ry = results[reaction_idx+1]
+					print("  Node %s: Rx = %0.2f, Ry = %0.2f" % [node_pos, rx, ry])
+					reaction_idx += 2
+				SupportType.ROLLER_X,SupportType.ROLLER_X_NEG:
+					var ry = results[reaction_idx]
+					print("  Node %s: Ry = %0.2f (Vertical Reaction)" % [node_pos, ry])
+					reaction_idx += 1
+				SupportType.ROLLER_Y,SupportType.ROLLER_Y_NEG:
+					var rx = results[reaction_idx]
+					print("  Node %s: Rx = %0.2f (Horizontal Reaction)" % [node_pos, rx])
+					reaction_idx += 1
+		current_mode = Mode.SOLVED
 	else:
 		print("Some Error Occured")
 	queue_redraw()
