@@ -1,15 +1,7 @@
 extends Node2D
 
-class TrussMember extends RefCounted:
-	var start: Vector2
-	var end: Vector2
-	func _init(p1: Vector2, p2: Vector2):
-		start = p1
-		end = p2
-	func has_point(p: Vector2):
-		return (start == p) or (end == p)
-	func matches(p1: Vector2, p2: Vector2):
-		return (start == p1 and end == p2) or (start == p2 and end == p1)
+@export var config: TrussConfig
+@onready var renderer = $Renderer
 
 enum Mode { DRAW_MEMBERS, ADD_SUPPORTS, ADD_FORCES, SOLVED}
 var current_mode: = Mode.DRAW_MEMBERS
@@ -30,12 +22,6 @@ var original_point: Vector2
 var is_drawing: = false
 var is_grabbing: = false
 var line_data: Array[TrussMember] = []
-
-@export var line_width: float = 20.0
-@export var line_thickness: float = 5.0
-@export var line_color: Color = Color.WHITE
-@export var border_color: Color = Color.BLACK
-@export var snap_radius: float = 25.0
 
 func _input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed:
@@ -58,20 +44,20 @@ func _input(event: InputEvent) -> void:
 			if event is InputEventMouseButton and event.pressed:
 				current_mode = Mode.DRAW_MEMBERS
 				member_forces.clear()
-				queue_redraw()
+				renderer.queue_redraw()
 
 func draw_truss(p1: Vector2, p2: Vector2, truss_color: Color):
-	var total_width = line_thickness + line_width
+	var total_width = config.line_thickness + config.line_width
 	var border_radius = total_width/2
-	var truss_radius = line_width/2
-	draw_line(p1, p2, border_color,total_width)
-	draw_circle(p1,border_radius, border_color)
-	draw_circle(p2,border_radius, border_color)
-	draw_line(p1, p2, truss_color,line_width)
+	var truss_radius = config.line_width/2
+	draw_line(p1, p2, config.border_color,total_width)
+	draw_circle(p1,border_radius, config.border_color)
+	draw_circle(p2,border_radius, config.border_color)
+	draw_line(p1, p2, truss_color,config.line_width)
 	draw_circle(p1,truss_radius, truss_color)
 	draw_circle(p2,truss_radius, truss_color)
-	draw_circle(p1,4, border_color)
-	draw_circle(p2,4, border_color)
+	draw_circle(p1,4, config.border_color)
+	draw_circle(p2,4, config.border_color)
 
 func draw_force(from: Vector2, to: Vector2, force_color: Color):
 	if from.distance_to(to) < 5:
@@ -79,9 +65,9 @@ func draw_force(from: Vector2, to: Vector2, force_color: Color):
 	var dir = (to-from).normalized()
 	var side = dir.rotated(PI/2)*10
 	var b_side = dir.rotated(PI/2)*15
-	draw_line(from,to,border_color,3.0+line_thickness)
-	draw_circle(from,(3.0+line_thickness)/2,border_color,true)
-	draw_primitive([to, to -dir*15 + b_side, to -dir*15-b_side],[border_color],[])
+	draw_line(from,to,config.border_color,3.0+config.line_thickness)
+	draw_circle(from,(3.0+config.line_thickness)/2,config.border_color,true)
+	draw_primitive([to, to -dir*15 + b_side, to -dir*15-b_side],[config.border_color],[])
 	draw_line(from,to,force_color,3.0)
 	draw_circle(from,3.0/2,force_color,true)
 	draw_primitive([to, to -dir*15 + side, to -dir*15-side],[force_color],[])
@@ -96,9 +82,9 @@ func apply_shift_lock(origin: Vector2, target: Vector2) -> Vector2:
 
 func best_pos(p: Vector2) -> Vector2:
 	for member in line_data:
-		if p.distance_to(member.start) < snap_radius:
+		if p.distance_to(member.start) < config.snap_radius:
 			return member.start
-		if p.distance_to(member.end) < snap_radius:
+		if p.distance_to(member.end) < config.snap_radius:
 			return member.end
 	return p
 
@@ -124,43 +110,6 @@ func get_unique_nodes():
 		if not points.has(m.end):
 			points.append(m.end)
 	return points
-
-func _draw() -> void:
-	for member in line_data:
-		var m_color = line_color
-		if current_mode == Mode.SOLVED and member_forces.has(member):
-			var force =member_forces[member]
-			if force > 0.1:
-				m_color = Color.CYAN
-			elif force < 0.1:
-				m_color = Color.TOMATO
-			else:
-				m_color = Color.DARK_GRAY
-		draw_truss(member.start,member.end, m_color)
-
-	for node in node_loads:
-		var vec = node_loads[node]
-		draw_force(node - vec, node, Color.RED)
-
-	if is_drawing:
-		var mouse_pos = best_pos(get_viewport().get_mouse_position())
-		if Input.is_key_pressed(KEY_SHIFT):
-			mouse_pos = apply_shift_lock(start_point, mouse_pos)
-		draw_truss(start_point, mouse_pos, Color.GRAY)
-
-	if is_drawing_forces:
-		var preview_mouse = best_pos(get_viewport().get_mouse_position())
-		if Input.is_key_pressed(KEY_SHIFT):
-			preview_mouse = apply_shift_lock(force_start_nodes, preview_mouse)
-			preview_mouse = best_pos(preview_mouse)
-		if Input.is_key_pressed(KEY_ALT):
-			draw_force(preview_mouse, force_start_nodes, Color.ORANGE)
-		else:
-			draw_force(force_start_nodes, preview_mouse, Color.ORANGE)
-
-	for node_pos in node_supports:
-		var type = node_supports[node_pos]
-		draw_support_icon(node_pos, type)
 
 func handle_member_drawing(event):
 	if event is InputEventMouseButton and event.pressed:
@@ -190,7 +139,7 @@ func handle_member_drawing(event):
 				if ((end_point - start_point).length() > 0.1) and not_exists(start_point, end_point):
 					line_data.append(TrussMember.new(start_point, end_point))
 				is_drawing = false
-				queue_redraw()
+				renderer.queue_redraw()
 				
 		elif event.button_index == MOUSE_BUTTON_RIGHT:
 			if is_drawing:
@@ -199,12 +148,12 @@ func handle_member_drawing(event):
 				line_data = line_data.filter(func(member):
 					return !member.has_point(best_pos(event.position))
 				)
-			queue_redraw()
+			renderer.queue_redraw()
 
 	if event is InputEventKey and event.pressed and event.keycode == KEY_G:
 		var mouse_pos = get_viewport().get_mouse_position()
 		var snapped_pos = best_pos(mouse_pos)
-		if mouse_pos.distance_to(snapped_pos) < snap_radius:
+		if mouse_pos.distance_to(snapped_pos) < config.snap_radius:
 			is_drawing = false
 			is_grabbing = true
 			grabbed_point = snapped_pos
@@ -214,25 +163,25 @@ func handle_member_drawing(event):
 		var raw_mouse = event.position
 		var snap_pos = raw_mouse
 		for member in line_data:
-			if member.start != grabbed_point and raw_mouse.distance_to(member.start) < snap_radius:
+			if member.start != grabbed_point and raw_mouse.distance_to(member.start) < config.snap_radius:
 				snap_pos = member.start
 				break
-			if member.end != grabbed_point and raw_mouse.distance_to(member.end) < snap_radius:
+			if member.end != grabbed_point and raw_mouse.distance_to(member.end) < config.snap_radius:
 				snap_pos = member.end
 				break
 		update_grabbed_point(snap_pos)
-		queue_redraw()
+		renderer.queue_redraw()
 
 func handle_support_logic(event):
 	if event is InputEventMouseButton and event.pressed:
 		var pos = best_pos(event.position)
-		if event.position.distance_to(pos) < snap_radius:
+		if event.position.distance_to(pos) < config.snap_radius:
 			if event.button_index == MOUSE_BUTTON_LEFT:
 				var current = node_supports.get(pos, SupportType.NONE)
 				node_supports[pos] = (current + 1) % 9
 			elif event.button_index == MOUSE_BUTTON_RIGHT:
 				node_supports.erase(pos)
-		queue_redraw()
+		renderer.queue_redraw()
 
 func handle_force_logic(event):
 	if event is InputEventMouseButton:
@@ -256,9 +205,9 @@ func handle_force_logic(event):
 						node_loads[force_start_nodes] = force_vec
 					is_drawing_forces = false
 		elif event.button_index == MOUSE_BUTTON_RIGHT and event.pressed:
-			if event.position.distance_to(snapped_node) < snap_radius:
+			if event.position.distance_to(snapped_node) < config.snap_radius:
 				node_loads.erase(snapped_node)
-	queue_redraw()
+	renderer.queue_redraw()
 	
 	
 func solve_truss():
@@ -317,7 +266,7 @@ func solve_truss():
 			var force = node_loads[node_pos]
 			B[n_idx*2 +1] = -force.y
 			B[n_idx*2] = -force.x
-	var results = solve_system(A,B)
+	var results = TrussMath.solve_system(A,B)
 	if results:
 		print("Truss System is solved!")
 		member_forces.clear()
@@ -355,7 +304,7 @@ func solve_truss():
 		current_mode = Mode.SOLVED
 	else:
 		print("Some Error Occured")
-	queue_redraw()
+	renderer.queue_redraw()
 
 func draw_support_icon(pos: Vector2, type: SupportType):
 	var size = 15.0
@@ -394,46 +343,4 @@ func draw_support_triangle(center: Vector2, offset: Vector2, color: Color):
 	draw_colored_polygon([p1,p2,p3], color)
 
 func _process(_delta: float) -> void:
-	queue_redraw()
-
-func solve_system(A: Array, B: Array):
-	var n = A.size()
-	var M = []
-	
-	for i in A:
-		if i.size() != n:
-			print("Not Square!")
-			return null
-	
-	if n != B.size():
-		print("Size Mismatch")
-		return null
-	
-	for i in range(n):
-		var row = A[i].duplicate()
-		row.append(B[i])
-		M.append(row)
-	
-	for i in range(n):
-		var max_row = i
-		for k in range(i + 1, n):
-			if abs(M[k][i]) > abs(M[max_row][i]):
-				max_row = k
-		var temp = M[i]
-		M[i] = M[max_row]
-		M[max_row] = temp
-		if abs(M[i][i]) < 1e-10:
-			return null
-		for k in range(i + 1, n):
-			var factor = float(M[k][i]) / float(M[i][i])
-			for j in range(i, n + 1):
-				M[k][j] -= factor * M[i][j]
-	
-	var x = []
-	x.resize(n)
-	for i in range(n - 1, -1, -1):
-		var sum = 0.0
-		for j in range(i + 1, n):
-			sum += M[i][j] * x[j]
-		x[i] = (M[i][n] - sum) / M[i][i]
-	return x
+	renderer.queue_redraw()

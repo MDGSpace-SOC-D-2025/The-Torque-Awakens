@@ -1,0 +1,7 @@
+[gd_resource type="Resource" script_class="TrussConfig" load_steps=2 format=3 uid="uid://bkw7v0jbmb0c3"]
+
+[ext_resource type="Script" uid="uid://cc8ji168ysh7i" path="res://scripts/TrussConfig.gd" id="1_me6rc"]
+
+[resource]
+script = ExtResource("1_me6rc")
+metadata/_custom_type_script = "uid://cc8ji168ysh7i"
