@@ -212,67 +212,13 @@ func handle_force_logic(event):
 	
 func solve_truss():
 	var nodes = get_unique_nodes()
-	var num_nodes = nodes.size()
-	var member_count = line_data.size()
-	var system_size = num_nodes*2
+	var results = TrussSolver.run_calculation(line_data, node_supports, node_loads, nodes)
 	
-	var A = []
-	for i in range(system_size):
-		var row = []
-		row.resize(system_size)
-		row.fill(0.0)
-		A.append(row)
-	
-	var B = []
-	B.resize(system_size)
-	B.fill(0.0)
-	for m_idx in range(member_count):
-		var member = line_data[m_idx]
-		var diff = member.end - member.start
-		var length = diff.length()
-		var unit = diff/length
-		var n1_dx = nodes.find(member.start)
-		var n2_dx = nodes.find(member.end)
-		
-		A[n1_dx *2][m_idx] = unit.x
-		A[n1_dx *2 +1][m_idx] = unit.y
-		
-		A[n2_dx *2][m_idx] = -unit.x
-		A[n2_dx*2 + 1][m_idx] = -unit.y
-	
-	var reaction_col = member_count
-	for node_pos in node_supports:
-		var n_idx = nodes.find(node_pos)
-		var type = node_supports[node_pos]
-		match type:
-			SupportType.PIN_X, SupportType.PIN_X_NEG, SupportType.PIN_Y, SupportType.PIN_Y_NEG:
-				if reaction_col < system_size:
-					A[n_idx*2][reaction_col] = 1.0
-					reaction_col += 1
-				if reaction_col < system_size:
-					A[n_idx*2 + 1][reaction_col] = 1.0
-					reaction_col += 1
-			SupportType.ROLLER_X, SupportType.ROLLER_X_NEG:
-				if reaction_col < system_size:
-					A[n_idx*2 + 1][reaction_col] = 1.0
-					reaction_col +=1
-			SupportType.ROLLER_Y, SupportType.ROLLER_Y_NEG:
-				if reaction_col < system_size:
-					A[n_idx*2][reaction_col] = 1.0
-					reaction_col +=1
-	for node_pos in node_loads:
-		var n_idx = nodes.find(node_pos)
-		if n_idx != -1:
-			var force = node_loads[node_pos]
-			B[n_idx*2 +1] = -force.y
-			B[n_idx*2] = -force.x
-	var results = TrussMath.solve_system(A,B)
 	if results:
 		print("Truss System is solved!")
 		member_forces.clear()
 		
-		print("Forces in Trusses")
-		for i in range(member_count):
+		for i in range(line_data.size()):
 			var force_val = results[i]
 			member_forces[line_data[i]] = force_val
 			var type_label: String
@@ -283,28 +229,29 @@ func solve_truss():
 			if abs(force_val) < 0.01:
 				type_label = "Zero"
 			print("  Member %d: %0.2f [%s]" % [i, force_val, type_label])
-		print("Reaction Forces")
-		var reaction_idx = member_count
+
+		var reaction_idx = line_data.size()
 		for node_pos in node_supports:
 			var type = node_supports[node_pos]
 			match type:
-				SupportType.PIN_X, SupportType.PIN_X_NEG,SupportType.PIN_Y, SupportType.PIN_Y_NEG:
+				SupportType.PIN_X, SupportType.PIN_X_NEG, SupportType.PIN_Y, SupportType.PIN_Y_NEG:
 					var rx = results[reaction_idx]
 					var ry = results[reaction_idx+1]
 					print("  Node %s: Rx = %0.2f, Ry = %0.2f" % [node_pos, rx, ry])
 					reaction_idx += 2
-				SupportType.ROLLER_X,SupportType.ROLLER_X_NEG:
+				SupportType.ROLLER_X, SupportType.ROLLER_X_NEG:
 					var ry = results[reaction_idx]
-					print("  Node %s: Ry = %0.2f (Vertical Reaction)" % [node_pos, ry])
+					print("  Node %s: Ry = %0.2f" % [node_pos, ry])
 					reaction_idx += 1
-				SupportType.ROLLER_Y,SupportType.ROLLER_Y_NEG:
+				SupportType.ROLLER_Y, SupportType.ROLLER_Y_NEG:
 					var rx = results[reaction_idx]
-					print("  Node %s: Rx = %0.2f (Horizontal Reaction)" % [node_pos, rx])
+					print("  Node %s: Rx = %0.2f" % [node_pos, rx])
 					reaction_idx += 1
 		current_mode = Mode.SOLVED
 	else:
 		print("Some Error Occured")
 	renderer.queue_redraw()
+
 
 func draw_support_icon(pos: Vector2, type: SupportType):
 	var size = 15.0
