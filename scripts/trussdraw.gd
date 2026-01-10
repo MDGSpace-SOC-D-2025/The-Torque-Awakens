@@ -2,6 +2,7 @@ extends Node2D
 
 @export var config: TrussConfig
 @onready var renderer = $Renderer
+@onready var input_manager = TrussInputManager.new()
 
 enum Mode { DRAW_MEMBERS, ADD_SUPPORTS, ADD_FORCES, SOLVED}
 var current_mode: = Mode.DRAW_MEMBERS
@@ -25,21 +26,21 @@ var line_data: Array[TrussMember] = []
 
 func _input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed:
-		if event.keycode == KEY_M:
+		if event.keycode == KEY_M: 
 			current_mode = Mode.DRAW_MEMBERS
-		if event.keycode == KEY_S:
+		if event.keycode == KEY_S: 
 			current_mode = Mode.ADD_SUPPORTS
-		if event.keycode == KEY_F:
+		if event.keycode == KEY_F: 
 			current_mode = Mode.ADD_FORCES
-		if event.keycode == KEY_ENTER:
-			solve_truss()
+		if event.keycode == KEY_ENTER: solve_truss()
+	
 	match current_mode:
 		Mode.DRAW_MEMBERS:
-			handle_member_drawing(event)
+			input_manager.handle_member_drawing(event)
 		Mode.ADD_SUPPORTS:
-			handle_support_logic(event)
+			input_manager.handle_support_logic(event)
 		Mode.ADD_FORCES:
-			handle_force_logic(event)
+			input_manager.handle_force_logic(event)
 		Mode.SOLVED:
 			if event is InputEventMouseButton and event.pressed:
 				current_mode = Mode.DRAW_MEMBERS
@@ -111,105 +112,6 @@ func get_unique_nodes():
 			points.append(m.end)
 	return points
 
-func handle_member_drawing(event):
-	if event is InputEventMouseButton and event.pressed:
-		if is_grabbing:
-			if event.button_index == MOUSE_BUTTON_LEFT:
-				update_grabbed_point(best_pos(event.position))
-				line_data = line_data.filter(func(line): return line.start != line.end)
-				is_grabbing = false
-				get_viewport().set_input_as_handled()
-				return
-			elif event.button_index == MOUSE_BUTTON_RIGHT:
-				update_grabbed_point(original_point)
-				is_grabbing = false
-				get_viewport().set_input_as_handled()
-				return
-
-		if event.button_index == MOUSE_BUTTON_LEFT:
-			if not is_drawing:
-				start_point = best_pos(event.position)
-				is_drawing = true
-			else:
-				end_point = best_pos(event.position)
-				if event.shift_pressed:
-					end_point = apply_shift_lock(start_point, end_point)
-					end_point = best_pos(end_point)
-				
-				if ((end_point - start_point).length() > 0.1) and not_exists(start_point, end_point):
-					line_data.append(TrussMember.new(start_point, end_point))
-				is_drawing = false
-				renderer.queue_redraw()
-				
-		elif event.button_index == MOUSE_BUTTON_RIGHT:
-			if is_drawing:
-				is_drawing = false
-			else:
-				line_data = line_data.filter(func(member):
-					return !member.has_point(best_pos(event.position))
-				)
-			renderer.queue_redraw()
-
-	if event is InputEventKey and event.pressed and event.keycode == KEY_G:
-		var mouse_pos = get_viewport().get_mouse_position()
-		var snapped_pos = best_pos(mouse_pos)
-		if mouse_pos.distance_to(snapped_pos) < config.snap_radius:
-			is_drawing = false
-			is_grabbing = true
-			grabbed_point = snapped_pos
-			original_point = snapped_pos
-
-	if is_grabbing and event is InputEventMouseMotion:
-		var raw_mouse = event.position
-		var snap_pos = raw_mouse
-		for member in line_data:
-			if member.start != grabbed_point and raw_mouse.distance_to(member.start) < config.snap_radius:
-				snap_pos = member.start
-				break
-			if member.end != grabbed_point and raw_mouse.distance_to(member.end) < config.snap_radius:
-				snap_pos = member.end
-				break
-		update_grabbed_point(snap_pos)
-		renderer.queue_redraw()
-
-func handle_support_logic(event):
-	if event is InputEventMouseButton and event.pressed:
-		var pos = best_pos(event.position)
-		if event.position.distance_to(pos) < config.snap_radius:
-			if event.button_index == MOUSE_BUTTON_LEFT:
-				var current = node_supports.get(pos, SupportType.NONE)
-				node_supports[pos] = (current + 1) % 9
-			elif event.button_index == MOUSE_BUTTON_RIGHT:
-				node_supports.erase(pos)
-		renderer.queue_redraw()
-
-func handle_force_logic(event):
-	if event is InputEventMouseButton:
-		var snapped_node = best_pos(event.position)
-		if event.button_index == MOUSE_BUTTON_LEFT:
-			if event.pressed:
-				force_start_nodes = snapped_node
-				is_drawing_forces = true
-			else:
-				if is_drawing_forces:
-					var target_pos = best_pos(event.position)
-					if Input.is_key_pressed(KEY_SHIFT):
-						target_pos = apply_shift_lock(force_start_nodes, target_pos)
-						target_pos = best_pos(target_pos)
-					var force_vec: Vector2
-					if Input.is_key_pressed(KEY_ALT):
-						force_vec = force_start_nodes - target_pos
-					else:
-						force_vec = target_pos - force_start_nodes
-					if force_vec.length() > 5:
-						node_loads[force_start_nodes] = force_vec
-					is_drawing_forces = false
-		elif event.button_index == MOUSE_BUTTON_RIGHT and event.pressed:
-			if event.position.distance_to(snapped_node) < config.snap_radius:
-				node_loads.erase(snapped_node)
-	renderer.queue_redraw()
-	
-	
 func solve_truss():
 	var nodes = get_unique_nodes()
 	var results = TrussSolver.run_calculation(line_data, node_supports, node_loads, nodes)
