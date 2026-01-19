@@ -10,9 +10,12 @@ func _draw() -> void:
 		var m_color = main.config.line_color
 		if main.current_mode == main.Mode.SOLVED and main.member_forces.has(member):
 			var force = main.member_forces[member]
-			if force > 0.1: m_color = Color.CYAN
-			elif force < -0.1: m_color = Color.TOMATO
-			else: m_color = Color.DARK_GRAY
+			if force > 0.1: 
+				m_color = Color.CYAN
+			elif force < -0.1: 
+				m_color = Color.TOMATO
+			else: 
+				m_color = Color.DARK_GRAY
 		main.draw_truss(member.start, member.end, m_color)
 
 	for node in main.node_loads:

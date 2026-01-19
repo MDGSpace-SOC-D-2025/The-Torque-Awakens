@@ -1,7 +1,7 @@
 extends Node
 class_name TrussInputManager
 
-var host # Reference to the main script
+var host 
 
 func handle_member_drawing(event):
 	if event is InputEventMouseButton and event.pressed:
