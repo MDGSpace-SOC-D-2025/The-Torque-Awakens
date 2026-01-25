@@ -37,9 +37,8 @@ func solve():
 		var ext_m = 0.0
 		
 		for force in obj.forces:
-			var f_vec = force.direction * force.magnitude
-			ext_f += f_vec
-
+			ext_f += force.direction * force.magnitude
+		
 		for i in range(obj.contacts.size()):
 			var c = obj.contacts[i]
 			var r = c.point - obj.position
@@ -55,7 +54,6 @@ func solve():
 		var solution = _solve_least_squares(A, b)
 		
 		if solution:
-			# Check Stability (Residual Error)
 			var res_x = 0.0
 			var res_y = 0.0
 			var res_m = 0.0
@@ -70,14 +68,13 @@ func solve():
 			if error > 0.5:
 				print("--- SYSTEM UNSTABLE ---")
 				print("Residual Error: ", error)
-				print("The object would likely fall or rotate.")
 			else:
 				print("--- SYSTEM STABLE ---")
 
 			for i in range(obj.contacts.size()):
 				var mag = solution[var_idx + i]
-				if mag < 0: mag = 0.0 # Physics check: Walls can't pull
-				print("Wall Contact ", i, " | Magnitude: ", mag)
+				if mag < 0: mag = 0.0
+				print("Contact ", i, " | Mag: ", mag)
 		
 		eq_idx += 3
 		var_idx += obj.contacts.size()

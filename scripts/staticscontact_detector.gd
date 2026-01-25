@@ -8,9 +8,9 @@ func setup(m: Node2D):
 func detect_all_contacts():
 	for obj in main.objects:
 		obj.contacts.clear()
-		_detect_with_shapecast(obj)
+		_detect_per_wall(obj)
 
-func _detect_with_shapecast(obj: RigidObject):
+func _detect_per_wall(obj: RigidObject):
 	var space_state = main.get_world_2d().direct_space_state
 	var query = PhysicsShapeQueryParameters2D.new()
 	
@@ -25,7 +25,7 @@ func _detect_with_shapecast(obj: RigidObject):
 	
 	query.transform = Transform2D(obj.rotation, obj.position)
 	query.collision_mask = 1 
-	query.margin = 1.0 
+	query.margin = 1.5
 
 	var intersections = space_state.intersect_shape(query, 32)
 	
@@ -39,8 +39,8 @@ func _detect_with_shapecast(obj: RigidObject):
 				break
 		
 		if wall_data:
-			var rest_info = wall_body.get_shape_owners()[0] # Get wall shape
-			var wall_shape = wall_body.shape_owner_get_shape(rest_info, 0)
+			var wall_shape_owner = wall_body.get_shape_owners()[0]
+			var wall_shape = wall_body.shape_owner_get_shape(wall_shape_owner, 0)
 			
 			var collision_points = query.shape.collide_and_get_contacts(
 				query.transform, 
@@ -50,16 +50,22 @@ func _detect_with_shapecast(obj: RigidObject):
 			
 			if collision_points.size() > 0:
 				var avg_p := Vector2.ZERO
-				var avg_n := Vector2.ZERO
-				
 				for p in collision_points:
 					avg_p += p
-				
 				avg_p /= collision_points.size()
-				avg_n = (obj.position - avg_p).normalized()
 				
 				var contact = ContactData.new()
 				contact.point = avg_p
-				contact.normal = avg_n
+				
+				var to_obj = (obj.position - avg_p).normalized()
+				if obj.is_box:
+					var wall_rot = wall_body.global_rotation
+					var wall_normal = Vector2.UP.rotated(wall_rot)
+					if wall_normal.dot(to_obj) < 0:
+						wall_normal *= -1
+					contact.normal = wall_normal
+				else:
+					contact.normal = to_obj
+					
 				contact.wall = wall_data
 				obj.contacts.append(contact)
