@@ -351,40 +351,55 @@ func solve_truss():
 	queue_redraw()
 
 func draw_support_icon(pos: Vector2, type: SupportType):
-	var size = 15.0
-	var color = Color.GREEN
+	var tex: Texture2D
+	var angle: float = 0.0
+	var manual_offset: Vector2 = Vector2.ZERO
+	
 	match type:
 		SupportType.PIN_X:
-			draw_support_triangle(pos, Vector2(0, size*1.5),color)
+			tex = config.pin_texture
+			angle = 0
+			manual_offset = config.pin_hole_offset
 		SupportType.PIN_X_NEG:
-			draw_support_triangle(pos,Vector2(0,-size*1.5), color)
+			tex = config.pin_texture
+			angle = PI
+			manual_offset = config.pin_hole_offset
 		SupportType.PIN_Y:
-			draw_support_triangle(pos, Vector2(size*1.5,0), color)
+			tex = config.pin_texture
+			angle = -PI/2
+			manual_offset = config.pin_hole_offset
 		SupportType.PIN_Y_NEG:
-			draw_support_triangle(pos, Vector2(-size*1.5,0), color)
+			tex = config.pin_texture
+			angle = PI/2
+			manual_offset = config.pin_hole_offset
 		SupportType.ROLLER_X:
-			draw_support_triangle(pos, Vector2(0,size), color)
-			draw_circle(pos + Vector2(-size/2 ,size +5),4, color)
-			draw_circle(pos + Vector2(size/2 ,size +5),4, color)
+			tex = config.roller_texture
+			angle = 0
+			manual_offset = config.roller_hole_offset
 		SupportType.ROLLER_X_NEG:
-			draw_support_triangle(pos, Vector2(0,-size), color)
-			draw_circle(pos + Vector2(-size/2 ,-size -5),4, color)
-			draw_circle(pos + Vector2(size/2 ,-size -5),4, color)
+			tex = config.roller_texture
+			angle = PI
+			manual_offset = config.roller_hole_offset
 		SupportType.ROLLER_Y:
-			draw_support_triangle(pos, Vector2(size,0), color)
-			draw_circle(pos + Vector2(size +5, -size/2),4, color)
-			draw_circle(pos + Vector2(size +5, size/2),4, color)
+			tex = config.roller_texture
+			angle = -PI/2
+			manual_offset = config.roller_hole_offset
 		SupportType.ROLLER_Y_NEG:
-			draw_support_triangle(pos, Vector2(-size,0), color)
-			draw_circle(pos + Vector2(-size -5, -size/2),4, color)
-			draw_circle(pos + Vector2(-size -5, size/2),4, color)
+			tex = config.roller_texture
+			angle = PI/2
 
-func draw_support_triangle(center: Vector2, offset: Vector2, color: Color):
-	var side = offset.rotated(PI/2).normalized() * 15.0
-	var p1 = center
-	var p2 = center + offset - side
-	var p3 = center + offset + side
-	draw_colored_polygon([p1,p2,p3], color)
+	if tex:
+		var tex_size = tex.get_size()
+		var scale_factor = min(config.icon_size.x / tex_size.x, config.icon_size.y / tex_size.y)
+		var final_size = tex_size * scale_factor
+		var rect = Rect2(-final_size / 2.0, final_size)
+		
+		var rotated_offset = manual_offset.rotated(angle)
+		
+		draw_set_transform(pos + rotated_offset, angle, Vector2.ONE)
+		draw_texture_rect(tex, rect, false)
+		draw_set_transform(Vector2.ZERO, 0, Vector2.ONE)
+
 
 func _process(_delta: float) -> void:
 	queue_redraw()

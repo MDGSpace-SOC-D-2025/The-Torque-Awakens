@@ -1,7 +1,15 @@
-[gd_resource type="Resource" script_class="TrussConfig" load_steps=2 format=3 uid="uid://bkw7v0jbmb0c3"]
+[gd_resource type="Resource" script_class="TrussConfig" load_steps=4 format=3 uid="uid://bkw7v0jbmb0c3"]
 
+[ext_resource type="Texture2D" uid="uid://d257chtl043bu" path="res://assets/HingeJoint.png" id="1_4sqh7"]
 [ext_resource type="Script" uid="uid://cc8ji168ysh7i" path="res://scripts/TrussConfig.gd" id="1_me6rc"]
+[ext_resource type="Texture2D" uid="uid://d060hs2q4a03g" path="res://assets/RollerJoint.png" id="2_jafxf"]
 
 [resource]
 script = ExtResource("1_me6rc")
+line_color = Color(0.7881195, 0.99999994, 0.99873036, 1)
+pin_texture = ExtResource("1_4sqh7")
+roller_texture = ExtResource("2_jafxf")
+icon_size = Vector2(48, 48)
+pin_hole_offset = Vector2(0, 10)
+roller_hole_offset = Vector2(0, 15)
 metadata/_custom_type_script = "uid://cc8ji168ysh7i"
