@@ -76,10 +76,11 @@ func _input(event: InputEvent) -> void:
 		elif event.keycode == KEY_F:
 			current_mode = Mode.FORCE
 			object_manager.clear_selection()
-		
-		if event.keycode == KEY_ENTER:
+		elif event.keycode == KEY_ENTER:
 			contact_detector.detect_all_contacts()
 			solver.solve()
+		elif event.keycode == KEY_SPACE:
+			clear_everything()
 	
 	match current_mode:
 		Mode.WALL:
@@ -93,6 +94,20 @@ func _input(event: InputEvent) -> void:
 		Mode.FORCE:
 			force_manager.handle_input(event)
 	
+	queue_redraw()
+
+func clear_everything():
+	for obj in objects:
+		if is_instance_valid(obj.body):
+			obj.body.queue_free()
+	objects.clear()
+	for wall in walls:
+		if is_instance_valid(wall.body):
+			wall.body.queue_free()
+	walls.clear()
+	object_manager.clear_selection()
+	wall_manager.is_drawing = false
+	force_manager.is_drawing = false
 	queue_redraw()
 
 func _draw():

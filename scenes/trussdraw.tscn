@@ -40,6 +40,9 @@ func _input(event: InputEvent) -> void:
 			current_mode = Mode.ADD_FORCES
 		if event.keycode == KEY_ENTER:
 			solve_truss()
+		if event.keycode == KEY_SPACE:
+			clear_all()
+			return
 	match current_mode:
 		Mode.DRAW_MEMBERS:
 			handle_member_drawing(event)
@@ -399,6 +402,18 @@ func draw_support_icon(pos: Vector2, type: SupportType):
 		draw_set_transform(pos + rotated_offset, angle, Vector2.ONE)
 		draw_texture_rect(tex, rect, false)
 		draw_set_transform(Vector2.ZERO, 0, Vector2.ONE)
+
+func clear_all():
+	line_data.clear()
+	node_supports.clear()
+	node_loads.clear()
+	member_forces.clear()
+	reaction_forces.clear()
+	is_drawing = false
+	is_grabbing = false
+	is_drawing_forces = false
+	current_mode = Mode.DRAW_MEMBERS
+	queue_redraw()
 
 
 func _process(_delta: float) -> void:
