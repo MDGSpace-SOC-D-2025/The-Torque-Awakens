@@ -90,22 +90,33 @@ func _setup_ui():
 
 func _input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed:
-		if event.keycode == KEY_W: current_mode = Mode.WALL
-		elif event.keycode == KEY_B: current_mode = Mode.BOX
-		elif event.keycode == KEY_C: current_mode = Mode.CIRCLE
-		elif event.keycode == KEY_O: current_mode = Mode.OBJECT
-		elif event.keycode == KEY_F: current_mode = Mode.FORCE
+		if event.keycode == KEY_W: 
+			current_mode = Mode.WALL
+		elif event.keycode == KEY_B: 
+			current_mode = Mode.BOX
+		elif event.keycode == KEY_C: 
+			current_mode = Mode.CIRCLE
+		elif event.keycode == KEY_O: 
+			current_mode = Mode.OBJECT
+		elif event.keycode == KEY_F: 
+			current_mode = Mode.FORCE
 		elif event.keycode == KEY_ENTER:
 			contact_detector.detect_all_contacts()
 			solver.solve()
-		elif event.keycode == KEY_SPACE: clear_everything()
+		elif event.keycode == KEY_SPACE: 
+			clear_everything()
 	
 	match current_mode:
-		Mode.WALL: wall_manager.handle_input(event)
-		Mode.BOX: object_manager.handle_box_input(event)
-		Mode.CIRCLE: object_manager.handle_circle_input(event)
-		Mode.OBJECT: object_manager.handle_object_edit(event)
-		Mode.FORCE: force_manager.handle_input(event)
+		Mode.WALL: 
+			wall_manager.handle_input(event)
+		Mode.BOX: 
+			object_manager.handle_box_input(event)
+		Mode.CIRCLE: 
+			object_manager.handle_circle_input(event)
+		Mode.OBJECT: 
+			object_manager.handle_object_edit(event)
+		Mode.FORCE: 
+			force_manager.handle_input(event)
 	
 	queue_redraw()
 
@@ -137,9 +148,13 @@ func _on_force_confirmed():
 	queue_redraw()
 
 func clear_everything():
-	for obj in objects: if is_instance_valid(obj.body): obj.body.queue_free()
+	for obj in objects: 
+		if is_instance_valid(obj.body): 
+			obj.body.queue_free()
 	objects.clear()
-	for wall in walls: if is_instance_valid(wall.body): wall.body.queue_free()
+	for wall in walls: 
+		if is_instance_valid(wall.body): 
+			wall.body.queue_free()
 	walls.clear()
 	queue_redraw()
 
