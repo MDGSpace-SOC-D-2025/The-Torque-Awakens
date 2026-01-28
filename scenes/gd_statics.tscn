@@ -8,6 +8,7 @@ script = ExtResource("1_4agh2")
 color_smooth = Color(0, 0.46486604, 0.46826637, 1)
 color_preview_smooth = Color(0.5449743, 0.54497427, 0.54497427, 1)
 color_contact_normal = Color(0.6532827, 0.4141705, 0.9074996, 1)
+gravity = 9.81
 
 [node name="GDStaticsCamera" type="Camera2D" parent="."]
 script = ExtResource("2_t1pn1")

@@ -11,7 +11,7 @@ script/source = "extends Node2D
 @export var config: TrussConfig
 @onready var renderer = $Renderer
 
-enum Mode { DRAW_MEMBERS, ADD_SUPPORTS, ADD_FORCES, SOLVED}
+enum Mode { DRAW_MEMBERS, ADD_SUPPORTS, ADD_FORCES, SOLVED, RULER}
 var current_mode: = Mode.DRAW_MEMBERS
 
 enum SupportType {NONE, PIN_X, PIN_X_NEG, PIN_Y, PIN_Y_NEG, ROLLER_X, ROLLER_X_NEG, ROLLER_Y, ROLLER_Y_NEG}
@@ -29,6 +29,7 @@ var grabbed_point: Vector2
 var original_point: Vector2
 var is_drawing: = false
 var is_grabbing: = false
+var is_measuring:= false
 var line_data: Array[TrussMember] = []
 
 func _input(event: InputEvent) -> void:
@@ -41,6 +42,8 @@ func _input(event: InputEvent) -> void:
 			current_mode = Mode.ADD_FORCES
 		if event.keycode == KEY_ENTER:
 			solve_truss()
+		if event.keycode == KEY_R:
+			current_mode = Mode.RULER
 		if event.keycode == KEY_SPACE:
 			clear_all()
 			return
@@ -52,6 +55,8 @@ func _input(event: InputEvent) -> void:
 			handle_support_logic(event)
 		Mode.ADD_FORCES:
 			handle_force_logic(event)
+		Mode.RULER:
+			handle_ruler_logic(event)
 		Mode.SOLVED:
 			if event is InputEventMouseButton and event.pressed:
 				current_mode = Mode.DRAW_MEMBERS
@@ -158,7 +163,22 @@ func _draw() -> void:
 	for node_pos in node_supports:
 		var type = node_supports[node_pos]
 		draw_support_icon(node_pos, type)
+		
+	if current_mode == Mode.RULER and is_measuring:
+		var d = end_point - start_point
+		var mid = (start_point + end_point) / 2
+		var a = str(abs(round(rad_to_deg(d.angle())))) + \"°\"
+		var f = preload(\"res://assets/JosefinSans-Bold.ttf\")
+		draw_line(start_point, end_point, Color.GOLD, 2)
+		draw_line(start_point, Vector2(end_point.x, start_point.y), Color(1, 1, 1, 0.4))
+		draw_line(Vector2(end_point.x, start_point.y), end_point, Color(1, 1, 1, 0.4))
 
+		draw_string(f, start_point + Vector2(10, -10), a, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color.GOLD)
+		draw_string(f, end_point + Vector2(10, 20), a, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color.GOLD)
+		draw_string(f, mid, str(int(d.length())), HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color.GOLD)
+		draw_string(f, Vector2(mid.x, start_point.y - 5), str(int(abs(d.x))), HORIZONTAL_ALIGNMENT_CENTER, -1, 12)
+		draw_string(f, Vector2(end_point.x + 5, mid.y), str(int(abs(d.y))), HORIZONTAL_ALIGNMENT_LEFT, -1, 12)
+	
 func handle_member_drawing(event):
 	var global_mouse = get_global_mouse_position()
 	if event is InputEventMouseButton and event.pressed:
@@ -230,6 +250,21 @@ func handle_support_logic(event):
 				node_supports.erase(pos)
 		queue_redraw()
 
+func handle_ruler_logic(event):
+	if event is InputEventMouseButton:
+		if event.button_index == MOUSE_BUTTON_LEFT:
+			if event.pressed:
+				start_point = get_global_mouse_position()
+				end_point = start_point
+				is_measuring = true
+			else:
+				is_measuring = false
+			queue_redraw()
+		
+	if event is InputEventMouseMotion and is_measuring:
+		end_point = get_global_mouse_position()
+		queue_redraw()
+
 func handle_force_logic(event):
 	var global_mouse = get_global_mouse_position()
 	if event is InputEventMouseButton:
@@ -258,7 +293,6 @@ func handle_force_logic(event):
 
 func solve_truss():
 	var nodes = get_unique_nodes()
-	var num_nodes = nodes.size()
 	var member_count = line_data.size()
 	
 	var results = TrussSolver.run_calculation(line_data, node_supports, node_loads, nodes)
