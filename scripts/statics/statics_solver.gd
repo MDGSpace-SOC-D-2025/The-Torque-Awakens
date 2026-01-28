@@ -1,11 +1,17 @@
 class_name StaticsSolver
 
 var main: Node2D
+var contact_results = {}
+var stability_info = {}
+var is_solved: = false
 
 func setup(m: Node2D):
 	main = m
 
 func solve():
+	contact_results.clear()
+	stability_info.clear()
+	
 	var num_objects = main.objects.size()
 	if num_objects == 0: return
 	
@@ -64,20 +70,51 @@ func solve():
 				res_m += A[eq_idx + 2][j] * solution[j]
 			
 			var error = Vector3(res_x - b[eq_idx], res_y - b[eq_idx+1], res_m - b[eq_idx+2]).length()
-			
-			if error > 0.5:
-				print("--- SYSTEM UNSTABLE ---")
-				print("Residual Error: ", error)
-			else:
-				print("--- SYSTEM STABLE ---")
+			stability_info[obj] = error
 
 			for i in range(obj.contacts.size()):
 				var mag = solution[var_idx + i]
 				if mag < 0: mag = 0.0
-				print("Contact ", i, " | Mag: ", mag)
+				contact_results[obj.contacts[i]] = mag
 		
 		eq_idx += 3
 		var_idx += obj.contacts.size()
+	
+	is_solved = true
+	if main.has_method("queue_redraw"):
+		main.queue_redraw()
+
+func draw_results(canvas: Node2D):
+	if not is_solved: return
+
+	var font = preload("res://assets/JosefinSans-Bold.ttf")
+	var font_size = 14
+	var golden = Color.GOLD
+	
+	for contact in contact_results:
+		var mag = contact_results[contact]
+		var label = "Fn: %.1f" % mag
+		var offset_pos = contact.point + (contact.normal * 25.0)
+		canvas.draw_string(font, offset_pos, label, HORIZONTAL_ALIGNMENT_CENTER, -1, font_size, golden)
+
+	for obj in stability_info:
+		var err = stability_info[obj]
+		var status = "STABLE" if err <= 0.5 else "UNSTABLE (Err: %.2f)" % err
+		
+		var v_offset = 40.0
+		if obj.is_box == true: 
+			v_offset = (obj.size.y / 2.0) + 25.0
+		else: 
+			v_offset = obj.size.x + 25.0
+			
+		canvas.draw_string(font, obj.position + Vector2(0, v_offset), status, HORIZONTAL_ALIGNMENT_CENTER, -1, font_size, golden)
+
+func clear_results():
+	contact_results.clear()
+	stability_info.clear()
+	is_solved = false
+	if main.has_method("queue_redraw"):
+		main.queue_redraw()
 
 func _solve_least_squares(A: Array, b: Array) -> Array:
 	var AT = _transpose(A)

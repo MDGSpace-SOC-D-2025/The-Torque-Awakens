@@ -1,7 +1,7 @@
 extends Node2D
 
 enum WallType { SMOOTH }
-enum Mode { WALL, BOX, CIRCLE, OBJECT, FORCE }
+enum Mode { WALL, BOX, CIRCLE, OBJECT, FORCE,RULER }
 
 @export_group("Colors")
 @export var color_smooth: Color = Color.GRAY
@@ -142,6 +142,7 @@ func clear_everything():
 	object_manager.clear_selection()
 	wall_manager.is_drawing = false
 	force_manager.is_drawing = false
+	solver.clear_results()
 	queue_redraw()
 
 func _on_mass_confirmed():
@@ -150,6 +151,8 @@ func _on_mass_confirmed():
 		pending_object.mass = val if val > 0 else default_mass
 		pending_object = null
 	mass_input.clear()
+	
+
 
 func _on_mass_canceled():
 	if pending_object:
@@ -164,3 +167,4 @@ func request_mass_input(obj: RigidObject):
 
 func _draw():
 	renderer.draw_all()
+	solver.draw_results(self)
