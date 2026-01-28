@@ -86,6 +86,21 @@ offset_bottom = 648.0
 texture = ExtResource("1_ekxnf")
 stretch_mode = 1
 
+[node name="Label" type="Label" parent="."]
+layout_mode = 0
+offset_left = 157.0
+offset_top = 150.0
+offset_right = 1004.0
+offset_bottom = 246.0
+theme_override_colors/font_color = Color(0.42352942, 1, 1, 1)
+theme_override_colors/font_shadow_color = Color(0.19419661, 0.32074773, 0.54323465, 0.5254902)
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/shadow_offset_y = 8
+theme_override_constants/outline_size = 5
+theme_override_fonts/font = ExtResource("1_l6cm7")
+theme_override_font_sizes/font_size = 96
+text = "theTorqueAwakens"
+
 [node name="Statics" type="Button" parent="."]
 layout_mode = 0
 offset_left = 607.0

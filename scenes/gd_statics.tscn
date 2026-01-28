@@ -1,7 +1,7 @@
 [gd_scene load_steps=3 format=3 uid="uid://dklqn1a2tats"]
 
-[ext_resource type="Script" uid="uid://wqjgaanxv3dv" path="res://scripts/gd_statics.gd" id="1_4agh2"]
-[ext_resource type="Script" uid="uid://c6d7isxbim25j" path="res://scripts/gd_statics_camera.gd" id="2_t1pn1"]
+[ext_resource type="Script" uid="uid://wqjgaanxv3dv" path="res://scripts/statics/gd_statics.gd" id="1_4agh2"]
+[ext_resource type="Script" uid="uid://c6d7isxbim25j" path="res://scripts/statics/gd_statics_camera.gd" id="2_t1pn1"]
 
 [node name="GDStatics" type="Node2D"]
 script = ExtResource("1_4agh2")

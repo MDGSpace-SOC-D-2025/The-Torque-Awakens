@@ -33,6 +33,9 @@ var force_manager: ForceManager
 var contact_detector: ContactDetector
 var solver: StaticsSolver
 var renderer: Renderer
+var mass_popup: ConfirmationDialog
+var mass_input: LineEdit
+var pending_object: RigidObject
 
 var walls: Array[WallData] = []
 var objects: Array[RigidObject] = []
@@ -58,6 +61,29 @@ func _ready():
 	
 	renderer = Renderer.new()
 	renderer.setup(self)
+	mass_popup = ConfirmationDialog.new()
+	mass_popup.title = "Set Mass"
+	mass_popup.exclusive = true
+	
+	mass_input = LineEdit.new()
+	mass_input.placeholder_text = "Enter mass (kg)"
+	mass_input.alignment = HORIZONTAL_ALIGNMENT_CENTER
+	
+	mass_input.text_changed.connect(func(new_text):
+		var pos = mass_input.caret_column
+		var filtered = ""
+		for c in new_text:
+			if c in "0123456789.":
+				filtered += c
+		mass_input.text = filtered
+		mass_input.caret_column = pos
+	)
+	
+	mass_popup.add_child(mass_input)
+	mass_popup.register_text_enter(mass_input)
+	mass_popup.confirmed.connect(_on_mass_confirmed)
+	mass_popup.canceled.connect(_on_mass_canceled)
+	add_child(mass_popup)
 
 func _input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed:
@@ -117,6 +143,24 @@ func clear_everything():
 	wall_manager.is_drawing = false
 	force_manager.is_drawing = false
 	queue_redraw()
+
+func _on_mass_confirmed():
+	if pending_object:
+		var val = mass_input.text.to_float()
+		pending_object.mass = val if val > 0 else default_mass
+		pending_object = null
+	mass_input.clear()
+
+func _on_mass_canceled():
+	if pending_object:
+		object_manager._remove_object_instance(pending_object)
+		pending_object = null
+	mass_input.clear()
+
+func request_mass_input(obj: RigidObject):
+	pending_object = obj
+	mass_popup.popup_centered(Vector2i(250, 80))
+	mass_input.grab_focus()
 
 func _draw():
 	renderer.draw_all()

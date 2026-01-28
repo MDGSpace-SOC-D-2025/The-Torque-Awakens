@@ -1,8 +1,8 @@
 [gd_scene load_steps=5 format=3 uid="uid://vdy70fgf4vm2"]
 
 [ext_resource type="Resource" uid="uid://bkw7v0jbmb0c3" path="res://assets/TrussConfig.tres" id="1_dwam6"]
-[ext_resource type="Script" uid="uid://dglpojg2vmlj1" path="res://scripts/renderer.gd" id="2_e8p1d"]
-[ext_resource type="Script" uid="uid://xgm0aowaamsk" path="res://scripts/camera_2d.gd" id="3_7rtog"]
+[ext_resource type="Script" uid="uid://dglpojg2vmlj1" path="res://scripts/truss/renderer.gd" id="2_e8p1d"]
+[ext_resource type="Script" uid="uid://xgm0aowaamsk" path="res://scripts/truss/camera_2d.gd" id="3_7rtog"]
 
 [sub_resource type="GDScript" id="GDScript_xhpro"]
 resource_name = "TrussConfig"
