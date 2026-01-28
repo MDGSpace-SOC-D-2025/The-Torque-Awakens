@@ -5,6 +5,7 @@
 [ext_resource type="Script" uid="uid://c6d7isxbim25j" path="res://scripts/statics/gd_statics_camera.gd" id="2_t1pn1"]
 
 [node name="GDStatics" type="Node2D"]
+position = Vector2(0, -0.525)
 script = ExtResource("1_4agh2")
 color_smooth = Color(0, 0.46486604, 0.46826637, 1)
 color_preview_smooth = Color(0.5449743, 0.54497427, 0.54497427, 1)
@@ -16,8 +17,8 @@ gravity = 9.81
 [node name="Label" type="Label" parent="CanvasLayer"]
 offset_left = 1.0
 offset_top = 1.0
-offset_right = 279.0
-offset_bottom = 258.0
+offset_right = 294.0
+offset_bottom = 188.0
 theme_override_colors/font_color = Color(0, 0, 0, 1)
 theme_override_fonts/font = ExtResource("2_mmtxs")
 text = "Modification:

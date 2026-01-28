@@ -134,10 +134,10 @@ func _draw() -> void:
 			var force = member_forces[member]
 			if force > 0.01:
 				m_color = Color.CYAN
-				force_label = "%.1f (T)" % force
+				force_label = "%.1f (T) N" % force
 			elif force < -0.01:
 				m_color = Color.TOMATO
-				force_label = "%.1f (C)" % abs(force)
+				force_label = "%.1f (C) N" % abs(force)
 			else:
 				m_color = Color.DARK_GRAY
 				force_label = "0"
@@ -316,13 +316,13 @@ func solve_truss():
 			var type = node_supports[node_pos]
 			match type:
 				SupportType.PIN_X, SupportType.PIN_X_NEG, SupportType.PIN_Y, SupportType.PIN_Y_NEG:
-					reaction_forces[node_pos] = "Rx:%.1f Ry:%.1f" % [results[reaction_idx], results[reaction_idx+1]]
+					reaction_forces[node_pos] = "Rx:%.1f N Ry:%.1f N" % [results[reaction_idx], results[reaction_idx+1]]
 					reaction_idx += 2
 				SupportType.ROLLER_X, SupportType.ROLLER_X_NEG:
-					reaction_forces[node_pos] = "Ry:%.1f" % results[reaction_idx]
+					reaction_forces[node_pos] = "Ry:%.1f N" % results[reaction_idx]
 					reaction_idx += 1
 				SupportType.ROLLER_Y, SupportType.ROLLER_Y_NEG:
-					reaction_forces[node_pos] = "Rx:%.1f" % results[reaction_idx]
+					reaction_forces[node_pos] = "Rx:%.1f N" % results[reaction_idx]
 					reaction_idx += 1
 		current_mode = Mode.SOLVED
 	queue_redraw()

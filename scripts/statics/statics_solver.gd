@@ -93,7 +93,7 @@ func draw_results(canvas: Node2D):
 	
 	for contact in contact_results:
 		var mag = contact_results[contact]
-		var label = "Fn: %.1f" % mag
+		var label = "Fn: %.1f N" % mag
 		var offset_pos = contact.point + (contact.normal * 25.0)
 		canvas.draw_string(font, offset_pos, label, HORIZONTAL_ALIGNMENT_CENTER, -1, font_size, golden)
 

@@ -1,7 +1,7 @@
 extends Node2D
 
 enum WallType { SMOOTH }
-enum Mode { WALL, BOX, CIRCLE, OBJECT, FORCE,RULER }
+enum Mode { WALL, BOX, CIRCLE, OBJECT, FORCE, RULER }
 
 @export_group("Colors")
 @export var color_smooth: Color = Color.GRAY
@@ -33,9 +33,14 @@ var force_manager: ForceManager
 var contact_detector: ContactDetector
 var solver: StaticsSolver
 var renderer: Renderer
+
 var mass_popup: ConfirmationDialog
 var mass_input: LineEdit
 var pending_object: RigidObject
+
+var force_popup: ConfirmationDialog
+var force_input: LineEdit
+var pending_force_data: Dictionary = {}
 
 var walls: Array[WallData] = []
 var objects: Array[RigidObject] = []
@@ -61,109 +66,82 @@ func _ready():
 	
 	renderer = Renderer.new()
 	renderer.setup(self)
+	
+	_setup_ui()
+
+func _setup_ui():
 	mass_popup = ConfirmationDialog.new()
 	mass_popup.title = "Set Mass"
-	mass_popup.exclusive = true
-	
 	mass_input = LineEdit.new()
-	mass_input.placeholder_text = "Enter mass (kg)"
+	mass_input.placeholder_text = "Mass (kg)"
 	mass_input.alignment = HORIZONTAL_ALIGNMENT_CENTER
-	
-	mass_input.text_changed.connect(func(new_text):
-		var pos = mass_input.caret_column
-		var filtered = ""
-		for c in new_text:
-			if c in "0123456789.":
-				filtered += c
-		mass_input.text = filtered
-		mass_input.caret_column = pos
-	)
-	
 	mass_popup.add_child(mass_input)
-	mass_popup.register_text_enter(mass_input)
-	mass_popup.confirmed.connect(_on_mass_confirmed)
-	mass_popup.canceled.connect(_on_mass_canceled)
 	add_child(mass_popup)
+	mass_popup.confirmed.connect(_on_mass_confirmed)
+	
+	force_popup = ConfirmationDialog.new()
+	force_popup.title = "Set Force Magnitude"
+	force_input = LineEdit.new()
+	force_input.placeholder_text = "Magnitude (N)"
+	force_input.alignment = HORIZONTAL_ALIGNMENT_CENTER
+	force_popup.add_child(force_input)
+	add_child(force_popup)
+	force_popup.confirmed.connect(_on_force_confirmed)
 
 func _input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed:
-		if event.keycode == KEY_W:
-			current_mode = Mode.WALL
-			object_manager.clear_selection()
-		elif event.keycode == KEY_B:
-			current_mode = Mode.BOX
-			object_manager.clear_selection()
-		elif event.keycode == KEY_C:
-			current_mode = Mode.CIRCLE
-			object_manager.clear_selection()
-		elif event.keycode == KEY_O:
-			current_mode = Mode.OBJECT
-			object_manager.clear_selection()
-		elif event.keycode == KEY_F:
-			current_mode = Mode.FORCE
-			object_manager.clear_selection()
+		if event.keycode == KEY_W: current_mode = Mode.WALL
+		elif event.keycode == KEY_B: current_mode = Mode.BOX
+		elif event.keycode == KEY_C: current_mode = Mode.CIRCLE
+		elif event.keycode == KEY_O: current_mode = Mode.OBJECT
+		elif event.keycode == KEY_F: current_mode = Mode.FORCE
 		elif event.keycode == KEY_ENTER:
 			contact_detector.detect_all_contacts()
 			solver.solve()
-		elif event.keycode == KEY_SPACE:
-			clear_everything()
+		elif event.keycode == KEY_SPACE: clear_everything()
 	
 	match current_mode:
-		Mode.WALL:
-			wall_manager.handle_input(event)
-		Mode.BOX:
-			object_manager.handle_box_input(event)
-		Mode.CIRCLE:
-			object_manager.handle_circle_input(event)
-		Mode.OBJECT:
-			object_manager.handle_object_edit(event)
-		Mode.FORCE:
-			force_manager.handle_input(event)
-	
-	if _is_interacting():
-		get_viewport().set_input_as_handled()
+		Mode.WALL: wall_manager.handle_input(event)
+		Mode.BOX: object_manager.handle_box_input(event)
+		Mode.CIRCLE: object_manager.handle_circle_input(event)
+		Mode.OBJECT: object_manager.handle_object_edit(event)
+		Mode.FORCE: force_manager.handle_input(event)
 	
 	queue_redraw()
-
-func _is_interacting() -> bool:
-	return wall_manager.is_drawing or object_manager.is_drawing or \
-		   object_manager.is_grabbing or object_manager.is_rotating or \
-		   force_manager.is_drawing
-
-func clear_everything():
-	for obj in objects:
-		if is_instance_valid(obj.body):
-			obj.body.queue_free()
-	objects.clear()
-	for wall in walls:
-		if is_instance_valid(wall.body):
-			wall.body.queue_free()
-	walls.clear()
-	object_manager.clear_selection()
-	wall_manager.is_drawing = false
-	force_manager.is_drawing = false
-	solver.clear_results()
-	queue_redraw()
-
-func _on_mass_confirmed():
-	if pending_object:
-		var val = mass_input.text.to_float()
-		pending_object.mass = val if val > 0 else default_mass
-		pending_object = null
-	mass_input.clear()
-	
-
-
-func _on_mass_canceled():
-	if pending_object:
-		object_manager._remove_object_instance(pending_object)
-		pending_object = null
-	mass_input.clear()
 
 func request_mass_input(obj: RigidObject):
 	pending_object = obj
 	mass_popup.popup_centered(Vector2i(250, 80))
 	mass_input.grab_focus()
+
+func _on_mass_confirmed():
+	if pending_object:
+		var val = mass_input.text.to_float()
+		pending_object.mass = val if val > 0 else default_mass
+	mass_input.clear()
+
+func request_force_magnitude(obj, direction, magnitude):
+	pending_force_data = {"obj": obj, "dir": direction, "mag": magnitude}
+	force_input.text = str(snapped(magnitude, 0.1))
+	force_popup.popup_centered(Vector2i(250, 80))
+	force_input.grab_focus()
+
+func _on_force_confirmed():
+	var val = force_input.text.to_float()
+	if val > 0:
+		var force = ForceData.new()
+		force.direction = pending_force_data.dir
+		force.magnitude = val
+		pending_force_data.obj.forces.append(force)
+	force_input.clear()
+	queue_redraw()
+
+func clear_everything():
+	for obj in objects: if is_instance_valid(obj.body): obj.body.queue_free()
+	objects.clear()
+	for wall in walls: if is_instance_valid(wall.body): wall.body.queue_free()
+	walls.clear()
+	queue_redraw()
 
 func _draw():
 	renderer.draw_all()
