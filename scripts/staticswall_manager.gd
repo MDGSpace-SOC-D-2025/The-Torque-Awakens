@@ -121,21 +121,23 @@ func _dist_to_segment(p: Vector2, a: Vector2, b: Vector2) -> float:
 	var projection = a + t * (b - a)
 	return p.distance_to(projection)
 
-func draw_walls():
+func draw_walls(t_scale: float):
 	for w in main.walls:
-		_draw_wall_style(w.start, w.end, main.color_smooth)
+		_draw_wall_style(w.start, w.end, main.color_smooth, t_scale)
 	
 	if is_drawing:
-		_draw_wall_style(wall_start, wall_end, main.color_preview_smooth)
+		_draw_wall_style(wall_start, wall_end, main.color_preview_smooth, t_scale)
 
-func _draw_wall_style(p1: Vector2, p2: Vector2, color: Color):
-	main.draw_line(p1, p2, color, main.wall_thickness)
+func _draw_wall_style(p1: Vector2, p2: Vector2, color: Color, t_scale: float):
+	main.draw_line(p1, p2, color, main.wall_thickness * t_scale)
 	
 	var dir = (p2 - p1).normalized()
 	var normal = Vector2(-dir.y, dir.x)
 	var length = p1.distance_to(p2)
 	
-	for i in range(0, int(length), int(main.hatch_step)):
-		var s = p1 + dir * i
-		var hatch_end = s + (normal + dir) * main.hatch_length
-		main.draw_line(s, hatch_end, color, 1.0)
+	var step = main.hatch_step * t_scale
+	if step > 0:
+		for i in range(0, int(length), int(step)):
+			var s = p1 + dir * i
+			var hatch_end = s + (normal + dir) * (main.hatch_length * t_scale)
+			main.draw_line(s, hatch_end, color, 1.0 * t_scale)

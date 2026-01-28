@@ -1,14 +1,15 @@
-[gd_scene load_steps=4 format=3 uid="uid://vdy70fgf4vm2"]
+[gd_scene load_steps=5 format=3 uid="uid://vdy70fgf4vm2"]
 
 [ext_resource type="Resource" uid="uid://bkw7v0jbmb0c3" path="res://assets/TrussConfig.tres" id="1_dwam6"]
 [ext_resource type="Script" uid="uid://dglpojg2vmlj1" path="res://scripts/renderer.gd" id="2_e8p1d"]
+[ext_resource type="Script" uid="uid://xgm0aowaamsk" path="res://scripts/camera_2d.gd" id="3_7rtog"]
 
 [sub_resource type="GDScript" id="GDScript_xhpro"]
 resource_name = "TrussConfig"
 script/source = "extends Node2D
 
 @export var config: TrussConfig
-@onready var renderder = $Renderer
+@onready var renderer = $Renderer
 
 enum Mode { DRAW_MEMBERS, ADD_SUPPORTS, ADD_FORCES, SOLVED}
 var current_mode: = Mode.DRAW_MEMBERS
@@ -43,6 +44,7 @@ func _input(event: InputEvent) -> void:
 		if event.keycode == KEY_SPACE:
 			clear_all()
 			return
+	
 	match current_mode:
 		Mode.DRAW_MEMBERS:
 			handle_member_drawing(event)
@@ -60,14 +62,14 @@ func draw_truss(p1: Vector2, p2: Vector2, truss_color: Color):
 	var total_width = config.line_thickness + config.line_width
 	var border_radius = total_width/2
 	var truss_radius = config.line_width/2
-	draw_line(p1, p2, config.border_color,total_width)
-	draw_circle(p1,border_radius, config.border_color)
-	draw_circle(p2,border_radius, config.border_color)
-	draw_line(p1, p2, truss_color,config.line_width)
-	draw_circle(p1,truss_radius, truss_color)
-	draw_circle(p2,truss_radius, truss_color)
-	draw_circle(p1,4, config.border_color)
-	draw_circle(p2,4, config.border_color)
+	draw_line(p1, p2, config.border_color, total_width)
+	draw_circle(p1, border_radius, config.border_color)
+	draw_circle(p2, border_radius, config.border_color)
+	draw_line(p1, p2, truss_color, config.line_width)
+	draw_circle(p1, truss_radius, truss_color)
+	draw_circle(p2, truss_radius, truss_color)
+	draw_circle(p1, 4, config.border_color)
+	draw_circle(p2, 4, config.border_color)
 
 func draw_force(from: Vector2, to: Vector2, force_color: Color):
 	if from.distance_to(to) < 5:
@@ -75,12 +77,12 @@ func draw_force(from: Vector2, to: Vector2, force_color: Color):
 	var dir = (to-from).normalized()
 	var side = dir.rotated(PI/2)*10
 	var b_side = dir.rotated(PI/2)*15
-	draw_line(from,to,config.border_color,3.0+config.line_thickness)
-	draw_circle(from,(3.0+config.line_thickness)/2,config.border_color,true)
-	draw_primitive([to, to -dir*15 + b_side, to -dir*15-b_side],[config.border_color],[])
-	draw_line(from,to,force_color,3.0)
-	draw_circle(from,3.0/2,force_color,true)
-	draw_primitive([to, to -dir*15 + side, to -dir*15-side],[force_color],[])
+	draw_line(from, to, config.border_color, 3.0 + config.line_thickness)
+	draw_circle(from, (3.0 + config.line_thickness)/2, config.border_color, true)
+	draw_primitive([to, to - dir*15 + b_side, to - dir*15 - b_side], [config.border_color], [])
+	draw_line(from, to, force_color, 3.0)
+	draw_circle(from, 3.0/2, force_color, true)
+	draw_primitive([to, to - dir*15 + side, to - dir*15 - side], [force_color], [])
 
 func apply_shift_lock(origin: Vector2, target: Vector2) -> Vector2:
 	var diff_x = abs(target.x - origin.x)
@@ -100,12 +102,12 @@ func best_pos(p: Vector2) -> Vector2:
 
 func not_exists(p1: Vector2, p2: Vector2):
 	for member in line_data:
-		if member.matches(p1  ,p2):
+		if member.matches(p1, p2):
 			return false
 	return true
 
 func update_grabbed_point(new_pos: Vector2):
-	for member in  line_data:
+	for member in line_data:
 		if member.start == grabbed_point:
 			member.start = new_pos
 		if member.end == grabbed_point:
@@ -125,30 +127,29 @@ func _draw() -> void:
 	for member in line_data:
 		var m_color = config.line_color
 		if current_mode == Mode.SOLVED and member_forces.has(member):
-			var force =member_forces[member]
-			if force > 0.1:
+			var force = member_forces[member]
+			if force > 0.01:
 				m_color = Color.CYAN
-			elif force < 0.1:
+			elif force < -0.01:
 				m_color = Color.TOMATO
-			if abs(force) < 0.01:
+			else:
 				m_color = Color.DARK_GRAY
-		draw_truss(member.start,member.end, m_color)
+		draw_truss(member.start, member.end, m_color)
 
 	for node in node_loads:
 		var vec = node_loads[node]
 		draw_force(node - vec, node, Color.RED)
 
 	if is_drawing:
-		var mouse_pos = best_pos(get_viewport().get_mouse_position())
+		var mouse_pos = best_pos(get_global_mouse_position())
 		if Input.is_key_pressed(KEY_SHIFT):
 			mouse_pos = apply_shift_lock(start_point, mouse_pos)
 		draw_truss(start_point, mouse_pos, Color.GRAY)
 
 	if is_drawing_forces:
-		var preview_mouse = best_pos(get_viewport().get_mouse_position())
+		var preview_mouse = best_pos(get_global_mouse_position())
 		if Input.is_key_pressed(KEY_SHIFT):
-			preview_mouse = apply_shift_lock(force_start_nodes, preview_mouse)
-			preview_mouse = best_pos(preview_mouse)
+			preview_mouse = best_pos(apply_shift_lock(force_start_nodes, preview_mouse))
 		if Input.is_key_pressed(KEY_ALT):
 			draw_force(preview_mouse, force_start_nodes, Color.ORANGE)
 		else:
@@ -159,10 +160,11 @@ func _draw() -> void:
 		draw_support_icon(node_pos, type)
 
 func handle_member_drawing(event):
+	var global_mouse = get_global_mouse_position()
 	if event is InputEventMouseButton and event.pressed:
 		if is_grabbing:
 			if event.button_index == MOUSE_BUTTON_LEFT:
-				update_grabbed_point(best_pos(event.position))
+				update_grabbed_point(best_pos(global_mouse))
 				line_data = line_data.filter(func(line): return line.start != line.end)
 				is_grabbing = false
 				get_viewport().set_input_as_handled()
@@ -175,13 +177,12 @@ func handle_member_drawing(event):
 
 		if event.button_index == MOUSE_BUTTON_LEFT:
 			if not is_drawing:
-				start_point = best_pos(event.position)
+				start_point = best_pos(global_mouse)
 				is_drawing = true
 			else:
-				end_point = best_pos(event.position)
+				end_point = best_pos(global_mouse)
 				if event.shift_pressed:
-					end_point = apply_shift_lock(start_point, end_point)
-					end_point = best_pos(end_point)
+					end_point = best_pos(apply_shift_lock(start_point, end_point))
 				
 				if ((end_point - start_point).length() > 0.1) and not_exists(start_point, end_point):
 					line_data.append(TrussMember.new(start_point, end_point))
@@ -193,36 +194,35 @@ func handle_member_drawing(event):
 				is_drawing = false
 			else:
 				line_data = line_data.filter(func(member):
-					return !member.has_point(best_pos(event.position))
+					return !member.has_point(best_pos(global_mouse))
 				)
 			queue_redraw()
 
 	if event is InputEventKey and event.pressed and event.keycode == KEY_G:
-		var mouse_pos = get_viewport().get_mouse_position()
-		var snapped_pos = best_pos(mouse_pos)
-		if mouse_pos.distance_to(snapped_pos) < config.snap_radius:
+		var snapped_pos = best_pos(global_mouse)
+		if global_mouse.distance_to(snapped_pos) < config.snap_radius:
 			is_drawing = false
 			is_grabbing = true
 			grabbed_point = snapped_pos
 			original_point = snapped_pos
 
 	if is_grabbing and event is InputEventMouseMotion:
-		var raw_mouse = event.position
-		var snap_pos = raw_mouse
+		var snap_pos = global_mouse
 		for member in line_data:
-			if member.start != grabbed_point and raw_mouse.distance_to(member.start) < config.snap_radius:
+			if member.start != grabbed_point and global_mouse.distance_to(member.start) < config.snap_radius:
 				snap_pos = member.start
 				break
-			if member.end != grabbed_point and raw_mouse.distance_to(member.end) < config.snap_radius:
+			if member.end != grabbed_point and global_mouse.distance_to(member.end) < config.snap_radius:
 				snap_pos = member.end
 				break
 		update_grabbed_point(snap_pos)
 		queue_redraw()
 
 func handle_support_logic(event):
+	var global_mouse = get_global_mouse_position()
 	if event is InputEventMouseButton and event.pressed:
-		var pos = best_pos(event.position)
-		if event.position.distance_to(pos) < config.snap_radius:
+		var pos = best_pos(global_mouse)
+		if global_mouse.distance_to(pos) < config.snap_radius:
 			if event.button_index == MOUSE_BUTTON_LEFT:
 				var current = node_supports.get(pos, SupportType.NONE)
 				node_supports[pos] = (current + 1) % 9
@@ -231,18 +231,18 @@ func handle_support_logic(event):
 		queue_redraw()
 
 func handle_force_logic(event):
+	var global_mouse = get_global_mouse_position()
 	if event is InputEventMouseButton:
-		var snapped_node = best_pos(event.position)
+		var snapped_node = best_pos(global_mouse)
 		if event.button_index == MOUSE_BUTTON_LEFT:
 			if event.pressed:
 				force_start_nodes = snapped_node
 				is_drawing_forces = true
 			else:
 				if is_drawing_forces:
-					var target_pos = best_pos(event.position)
+					var target_pos = best_pos(global_mouse)
 					if Input.is_key_pressed(KEY_SHIFT):
-						target_pos = apply_shift_lock(force_start_nodes, target_pos)
-						target_pos = best_pos(target_pos)
+						target_pos = best_pos(apply_shift_lock(force_start_nodes, target_pos))
 					var force_vec: Vector2
 					if Input.is_key_pressed(KEY_ALT):
 						force_vec = force_start_nodes - target_pos
@@ -252,68 +252,17 @@ func handle_force_logic(event):
 						node_loads[force_start_nodes] = force_vec
 					is_drawing_forces = false
 		elif event.button_index == MOUSE_BUTTON_RIGHT and event.pressed:
-			if event.position.distance_to(snapped_node) < config.snap_radius:
+			if global_mouse.distance_to(snapped_node) < config.snap_radius:
 				node_loads.erase(snapped_node)
 	queue_redraw()
-	
-	
+
 func solve_truss():
 	var nodes = get_unique_nodes()
 	var num_nodes = nodes.size()
 	var member_count = line_data.size()
-	var system_size = num_nodes*2
 	
-	var A = []
-	for i in range(system_size):
-		var row = []
-		row.resize(system_size)
-		row.fill(0.0)
-		A.append(row)
+	var results = TrussSolver.run_calculation(line_data, node_supports, node_loads, nodes)
 	
-	var B = []
-	B.resize(system_size)
-	B.fill(0.0)
-	for m_idx in range(member_count):
-		var member = line_data[m_idx]
-		var diff = member.end - member.start
-		var length = diff.length()
-		var unit = diff/length
-		var n1_dx = nodes.find(member.start)
-		var n2_dx = nodes.find(member.end)
-		
-		A[n1_dx *2][m_idx] = unit.x
-		A[n1_dx *2 +1][m_idx] = unit.y
-		
-		A[n2_dx *2][m_idx] = -unit.x
-		A[n2_dx*2 + 1][m_idx] = -unit.y
-	
-	var reaction_col = member_count
-	for node_pos in node_supports:
-		var n_idx = nodes.find(node_pos)
-		var type = node_supports[node_pos]
-		match type:
-			SupportType.PIN_X, SupportType.PIN_X_NEG, SupportType.PIN_Y, SupportType.PIN_Y_NEG:
-				if reaction_col < system_size:
-					A[n_idx*2][reaction_col] = 1.0
-					reaction_col += 1
-				if reaction_col < system_size:
-					A[n_idx*2 + 1][reaction_col] = 1.0
-					reaction_col += 1
-			SupportType.ROLLER_X, SupportType.ROLLER_X_NEG:
-				if reaction_col < system_size:
-					A[n_idx*2 + 1][reaction_col] = 1.0
-					reaction_col +=1
-			SupportType.ROLLER_Y, SupportType.ROLLER_Y_NEG:
-				if reaction_col < system_size:
-					A[n_idx*2][reaction_col] = 1.0
-					reaction_col +=1
-	for node_pos in node_loads:
-		var n_idx = nodes.find(node_pos)
-		if n_idx != -1:
-			var force = node_loads[node_pos]
-			B[n_idx*2 +1] = -force.y
-			B[n_idx*2] = -force.x
-	var results = TrussMath.solve_system(A,B)
 	if results:
 		print(\"Truss System is solved!\")
 		member_forces.clear()
@@ -325,26 +274,27 @@ func solve_truss():
 			var type_label: String
 			if force_val > 0.01:
 				type_label = \"T\"
-			else:
+			elif force_val < -0.01:
 				type_label = \"C\"
-			if abs(force_val) < 0.01:
+			else:
 				type_label = \"Zero\"
 			print(\"  Member %d: %0.2f [%s]\" % [i, force_val, type_label])
+			
 		print(\"Reaction Forces\")
 		var reaction_idx = member_count
 		for node_pos in node_supports:
 			var type = node_supports[node_pos]
 			match type:
-				SupportType.PIN_X, SupportType.PIN_X_NEG,SupportType.PIN_Y, SupportType.PIN_Y_NEG:
+				SupportType.PIN_X, SupportType.PIN_X_NEG, SupportType.PIN_Y, SupportType.PIN_Y_NEG:
 					var rx = results[reaction_idx]
 					var ry = results[reaction_idx+1]
 					print(\"  Node %s: Rx = %0.2f, Ry = %0.2f\" % [node_pos, rx, ry])
 					reaction_idx += 2
-				SupportType.ROLLER_X,SupportType.ROLLER_X_NEG:
+				SupportType.ROLLER_X, SupportType.ROLLER_X_NEG:
 					var ry = results[reaction_idx]
 					print(\"  Node %s: Ry = %0.2f (Vertical Reaction)\" % [node_pos, ry])
 					reaction_idx += 1
-				SupportType.ROLLER_Y,SupportType.ROLLER_Y_NEG:
+				SupportType.ROLLER_Y, SupportType.ROLLER_Y_NEG:
 					var rx = results[reaction_idx]
 					print(\"  Node %s: Rx = %0.2f (Horizontal Reaction)\" % [node_pos, rx])
 					reaction_idx += 1
@@ -396,7 +346,6 @@ func draw_support_icon(pos: Vector2, type: SupportType):
 		var scale_factor = min(config.icon_size.x / tex_size.x, config.icon_size.y / tex_size.y)
 		var final_size = tex_size * scale_factor
 		var rect = Rect2(-final_size / 2.0, final_size)
-		
 		var rotated_offset = manual_offset.rotated(angle)
 		
 		draw_set_transform(pos + rotated_offset, angle, Vector2.ONE)
@@ -415,7 +364,6 @@ func clear_all():
 	current_mode = Mode.DRAW_MEMBERS
 	queue_redraw()
 
-
 func _process(_delta: float) -> void:
 	queue_redraw()
 "
@@ -426,3 +374,7 @@ config = ExtResource("1_dwam6")
 
 [node name="Renderer" type="Node2D" parent="."]
 script = ExtResource("2_e8p1d")
+
+[node name="Camera2D" type="Camera2D" parent="."]
+script = ExtResource("3_7rtog")
+pan_speed = 2.5

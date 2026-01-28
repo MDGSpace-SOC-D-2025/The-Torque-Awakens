@@ -171,7 +171,7 @@ func _dist_to_segment(p: Vector2, a: Vector2, b: Vector2) -> float:
 	var projection = a + t * (b - a)
 	return p.distance_to(projection)
 
-func draw_objects():
+func draw_objects(t_scale: float):
 	for obj in main.objects:
 		var color = main.color_box if obj.is_box else main.color_circle
 		if obj == selected_object:
@@ -190,20 +190,20 @@ func draw_objects():
 				rotated.append(obj.position + c.rotated(obj.rotation))
 			
 			for i in range(4):
-				main.draw_line(rotated[i], rotated[(i + 1) % 4], color, 2.0)
-			main.draw_circle(obj.position, 3, color)
+				main.draw_line(rotated[i], rotated[(i + 1) % 4], color, 2.0 * t_scale)
+			main.draw_circle(obj.position, 3 * t_scale, color)
 		else:
-			main.draw_arc(obj.position, obj.size.x, 0, TAU, 32, color, 2.0)
-			main.draw_circle(obj.position, 3, color)
+			main.draw_arc(obj.position, obj.size.x, 0, TAU, 32, color, 2.0 * t_scale)
+			main.draw_circle(obj.position, 3 * t_scale, color)
 		
 		for force in obj.forces:
 			var force_end = obj.position + force.direction * force.magnitude
-			main.draw_line(obj.position, force_end, main.color_force, 2.0)
-			_draw_arrow_head(force_end, force.direction, main.color_force)
+			main.draw_line(obj.position, force_end, main.color_force, 2.0 * t_scale)
+			_draw_arrow_head(force_end, force.direction, main.color_force, t_scale)
 		
 		for contact in obj.contacts:
-			main.draw_line(contact.point, obj.position, main.color_contact_normal, 1.5)
-			main.draw_circle(contact.point, 3, main.color_contact_normal)
+			main.draw_line(contact.point, obj.position, main.color_contact_normal, 1.5 * t_scale)
+			main.draw_circle(contact.point, 3 * t_scale, main.color_contact_normal)
 	
 	if is_drawing and main.current_mode == 1:
 		var mouse_pos = main.get_global_mouse_position()
@@ -215,17 +215,17 @@ func draw_objects():
 			box_start + Vector2(0, size.y)
 		]
 		for i in range(4):
-			main.draw_line(corners[i], corners[(i + 1) % 4], main.color_preview_smooth, 2.0)
+			main.draw_line(corners[i], corners[(i + 1) % 4], main.color_preview_smooth, 2.0 * t_scale)
 	
 	if is_drawing and main.current_mode == 2:
 		var mouse_pos = main.get_global_mouse_position()
 		var radius = circle_center.distance_to(mouse_pos)
-		main.draw_arc(circle_center, radius, 0, TAU, 32, main.color_preview_smooth, 2.0)
+		main.draw_arc(circle_center, radius, 0, TAU, 32, main.color_preview_smooth, 2.0 * t_scale)
 
-func _draw_arrow_head(tip: Vector2, direction: Vector2, color: Color):
-	var size = 8.0
+func _draw_arrow_head(tip: Vector2, direction: Vector2, color: Color, t_scale: float):
+	var size = 8.0 * t_scale
 	var angle = 0.5
 	var left = tip - direction.rotated(angle) * size
 	var right = tip - direction.rotated(-angle) * size
-	main.draw_line(tip, left, color, 2.0)
-	main.draw_line(tip, right, color, 2.0)
+	main.draw_line(tip, left, color, 2.0 * t_scale)
+	main.draw_line(tip, right, color, 2.0 * t_scale)

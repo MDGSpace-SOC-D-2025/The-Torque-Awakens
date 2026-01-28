@@ -62,20 +62,20 @@ func _dist_to_segment(p: Vector2, a: Vector2, b: Vector2) -> float:
 	var projection = a + t * (b - a)
 	return p.distance_to(projection)
 
-func draw_force_preview():
+func draw_force_preview(t_scale: float):
 	if is_drawing and selected_object:
 		var mouse_pos = main.get_global_mouse_position()
 		var force_vec = mouse_pos - force_start
 		if Input.is_key_pressed(KEY_ALT):
 			force_vec = -force_vec
 		var force_end = force_start + force_vec
-		main.draw_line(force_start, force_end, main.color_preview_smooth, 2.0)
-		_draw_arrow_head(force_end, force_vec.normalized(), main.color_preview_smooth)
+		main.draw_line(force_start, force_end, main.color_preview_smooth, 2.0 * t_scale)
+		_draw_arrow_head(force_end, force_vec.normalized(), main.color_preview_smooth, t_scale)
 
-func _draw_arrow_head(tip: Vector2, direction: Vector2, color: Color):
-	var size = 8.0
+func _draw_arrow_head(tip: Vector2, direction: Vector2, color: Color, t_scale: float):
+	var size = 8.0 * t_scale
 	var angle = 0.5
 	var left = tip - direction.rotated(angle) * size
 	var right = tip - direction.rotated(-angle) * size
-	main.draw_line(tip, left, color, 2.0)
-	main.draw_line(tip, right, color, 2.0)
+	main.draw_line(tip, left, color, 2.0 * t_scale)
+	main.draw_line(tip, right, color, 2.0 * t_scale)

@@ -94,7 +94,15 @@ func _input(event: InputEvent) -> void:
 		Mode.FORCE:
 			force_manager.handle_input(event)
 	
+	if _is_interacting():
+		get_viewport().set_input_as_handled()
+	
 	queue_redraw()
+
+func _is_interacting() -> bool:
+	return wall_manager.is_drawing or object_manager.is_drawing or \
+		   object_manager.is_grabbing or object_manager.is_rotating or \
+		   force_manager.is_drawing
 
 func clear_everything():
 	for obj in objects:
